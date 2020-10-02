@@ -9,6 +9,9 @@ namespace yii\db;
 
 use Yii;
 use yii\base\Component;
+use yii\base\InvalidArgumentException;
+use yii\helpers\ArrayHelper;
+use yii\base\InvalidConfigException;
 
 /**
  * Query represents a SELECT SQL statement in a way that is independent of DBMS.
@@ -39,11 +42,13 @@ use yii\base\Component;
  *
  * A more detailed usage guide on how to work with Query can be found in the [guide article on Query Builder](guide:db-query-builder).
  *
+ * @property string[] $tablesUsedInFrom Table names indexed by aliases. This property is read-only.
+ *
  * @author Qiang Xue <qiang.xue@gmail.com>
  * @author Carsten Brandt <mail@cebe.cc>
  * @since 2.0
  */
-class Query extends Component implements QueryInterface
+class Query extends Component implements QueryInterface, ExpressionInterface
 {
     use QueryTrait;
 
@@ -93,7 +98,7 @@ class Query extends Component implements QueryInterface
      */
     public $join;
     /**
-     * @var string|array|Expression the condition to be applied in the GROUP BY clause.
+     * @var string|array|ExpressionInterface the condition to be applied in the GROUP BY clause.
      * It can be either a string or an array. Please refer to [[where()]] on how to specify the condition.
      */
     public $having;
@@ -106,10 +111,36 @@ class Query extends Component implements QueryInterface
      */
     public $union;
     /**
+     * @var array this is used to construct the WITH section in a SQL query.
+     * Each array element is an array of the following structure:
+     *
+     * - `query`: either a string or a [[Query]] object representing a query
+     * - `alias`: string, alias of query for further usage
+     * - `recursive`: boolean, whether it should be `WITH RECURSIVE` or `WITH`
+     * @see withQuery()
+     * @since 2.0.35
+     */
+    public $withQueries;
+    /**
      * @var array list of query parameter values indexed by parameter placeholders.
      * For example, `[':name' => 'Dan', ':age' => 31]`.
      */
     public $params = [];
+    /**
+     * @var int|true the default number of seconds that query results can remain valid in cache.
+     * Use 0 to indicate that the cached data will never expire.
+     * Use a negative number to indicate that query cache should not be used.
+     * Use boolean `true` to indicate that [[Connection::queryCacheDuration]] should be used.
+     * @see cache()
+     * @since 2.0.14
+     */
+    public $queryCacheDuration;
+    /**
+     * @var \yii\caching\Dependency the dependency to be associated with the cached query result for this query
+     * @see cache()
+     * @since 2.0.14
+     */
+    public $queryCacheDependency;
 
 
     /**
@@ -123,9 +154,12 @@ class Query extends Component implements QueryInterface
         if ($db === null) {
             $db = Yii::$app->getDb();
         }
-        list ($sql, $params) = $db->getQueryBuilder()->build($this);
+        list($sql, $params) = $db->getQueryBuilder()->build($this);
 
-        return $db->createCommand($sql, $params);
+        $command = $db->createCommand($sql, $params);
+        $this->setCommandCache($command);
+
+        return $command;
     }
 
     /**
@@ -174,6 +208,7 @@ class Query extends Component implements QueryInterface
 
     /**
      * Starts a batch query and retrieves data row by row.
+     *
      * This method is similar to [[batch()]] except that in each iteration of the result,
      * only one row of data is returned. For example,
      *
@@ -228,13 +263,9 @@ class Query extends Component implements QueryInterface
         }
         $result = [];
         foreach ($rows as $row) {
-            if (is_string($this->indexBy)) {
-                $key = $row[$this->indexBy];
-            } else {
-                $key = call_user_func($this->indexBy, $row);
-            }
-            $result[$key] = $row;
+            $result[ArrayHelper::getValue($row, $this->indexBy)] = $row;
         }
+
         return $result;
     }
 
@@ -250,6 +281,7 @@ class Query extends Component implements QueryInterface
         if ($this->emulateExecution) {
             return false;
         }
+
         return $this->createCommand($db)->queryOne();
     }
 
@@ -266,6 +298,7 @@ class Query extends Component implements QueryInterface
         if ($this->emulateExecution) {
             return null;
         }
+
         return $this->createCommand($db)->queryScalar();
     }
 
@@ -286,19 +319,32 @@ class Query extends Component implements QueryInterface
         }
 
         if (is_string($this->indexBy) && is_array($this->select) && count($this->select) === 1) {
-            $this->select[] = $this->indexBy;
+            if (strpos($this->indexBy, '.') === false && count($tables = $this->getTablesUsedInFrom()) > 0) {
+                $this->select[] = key($tables) . '.' . $this->indexBy;
+            } else {
+                $this->select[] = $this->indexBy;
+            }
         }
         $rows = $this->createCommand($db)->queryAll();
         $results = [];
+        $column = null;
+        if (is_string($this->indexBy)) {
+            if (($dotPos = strpos($this->indexBy, '.')) === false) {
+                $column = $this->indexBy;
+            } else {
+                $column = substr($this->indexBy, $dotPos + 1);
+            }
+        }
         foreach ($rows as $row) {
             $value = reset($row);
 
             if ($this->indexBy instanceof \Closure) {
                 $results[call_user_func($this->indexBy, $row)] = $value;
             } else {
-                $results[$row[$this->indexBy]] = $value;
+                $results[$row[$column]] = $value;
             }
         }
+
         return $results;
     }
 
@@ -316,6 +362,7 @@ class Query extends Component implements QueryInterface
         if ($this->emulateExecution) {
             return 0;
         }
+
         return $this->queryScalar("COUNT($q)", $db);
     }
 
@@ -332,6 +379,7 @@ class Query extends Component implements QueryInterface
         if ($this->emulateExecution) {
             return 0;
         }
+
         return $this->queryScalar("SUM($q)", $db);
     }
 
@@ -348,6 +396,7 @@ class Query extends Component implements QueryInterface
         if ($this->emulateExecution) {
             return 0;
         }
+
         return $this->queryScalar("AVG($q)", $db);
     }
 
@@ -398,7 +447,7 @@ class Query extends Component implements QueryInterface
     /**
      * Queries a scalar value by setting [[select]] first.
      * Restores the value of select to make this query reusable.
-     * @param string|Expression $selectExpression
+     * @param string|ExpressionInterface $selectExpression
      * @param Connection|null $db
      * @return bool|string
      */
@@ -413,38 +462,164 @@ class Query extends Component implements QueryInterface
             && empty($this->groupBy)
             && empty($this->having)
             && empty($this->union)
-            && empty($this->orderBy)
         ) {
             $select = $this->select;
+            $order = $this->orderBy;
             $limit = $this->limit;
             $offset = $this->offset;
 
             $this->select = [$selectExpression];
+            $this->orderBy = null;
             $this->limit = null;
             $this->offset = null;
-            $command = $this->createCommand($db);
+
+            $e = null;
+            try {
+                $command = $this->createCommand($db);
+            } catch (\Exception $e) {
+                // throw it later
+            } catch (\Throwable $e) {
+                // throw it later
+            }
 
             $this->select = $select;
+            $this->orderBy = $order;
             $this->limit = $limit;
             $this->offset = $offset;
 
+            if ($e !== null) {
+                throw $e;
+            }
+
             return $command->queryScalar();
-        } else {
-            return (new Query)->select([$selectExpression])
-                ->from(['c' => $this])
-                ->createCommand($db)
-                ->queryScalar();
         }
+
+        $command = (new self())
+            ->select([$selectExpression])
+            ->from(['c' => $this])
+            ->createCommand($db);
+        $this->setCommandCache($command);
+
+        return $command->queryScalar();
+    }
+
+    /**
+     * Returns table names used in [[from]] indexed by aliases.
+     * Both aliases and names are enclosed into {{ and }}.
+     * @return string[] table names indexed by aliases
+     * @throws \yii\base\InvalidConfigException
+     * @since 2.0.12
+     */
+    public function getTablesUsedInFrom()
+    {
+        if (empty($this->from)) {
+            return [];
+        }
+
+        if (is_array($this->from)) {
+            $tableNames = $this->from;
+        } elseif (is_string($this->from)) {
+            $tableNames = preg_split('/\s*,\s*/', trim($this->from), -1, PREG_SPLIT_NO_EMPTY);
+        } elseif ($this->from instanceof Expression) {
+            $tableNames = [$this->from];
+        } else {
+            throw new InvalidConfigException(gettype($this->from) . ' in $from is not supported.');
+        }
+
+        return $this->cleanUpTableNames($tableNames);
+    }
+
+    /**
+     * Clean up table names and aliases
+     * Both aliases and names are enclosed into {{ and }}.
+     * @param array $tableNames non-empty array
+     * @return string[] table names indexed by aliases
+     * @since 2.0.14
+     */
+    protected function cleanUpTableNames($tableNames)
+    {
+        $cleanedUpTableNames = [];
+        foreach ($tableNames as $alias => $tableName) {
+            if (is_string($tableName) && !is_string($alias)) {
+                $pattern = <<<PATTERN
+~
+^
+\s*
+(
+(?:['"`\[]|{{)
+.*?
+(?:['"`\]]|}})
+|
+\(.*?\)
+|
+.*?
+)
+(?:
+(?:
+    \s+
+    (?:as)?
+    \s*
+)
+(
+   (?:['"`\[]|{{)
+    .*?
+    (?:['"`\]]|}})
+    |
+    .*?
+)
+)?
+\s*
+$
+~iux
+PATTERN;
+                if (preg_match($pattern, $tableName, $matches)) {
+                    if (isset($matches[2])) {
+                        list(, $tableName, $alias) = $matches;
+                    } else {
+                        $tableName = $alias = $matches[1];
+                    }
+                }
+            }
+
+
+            if ($tableName instanceof Expression) {
+                if (!is_string($alias)) {
+                    throw new InvalidArgumentException('To use Expression in from() method, pass it in array format with alias.');
+                }
+                $cleanedUpTableNames[$this->ensureNameQuoted($alias)] = $tableName;
+            } elseif ($tableName instanceof self) {
+                $cleanedUpTableNames[$this->ensureNameQuoted($alias)] = $tableName;
+            } else {
+                $cleanedUpTableNames[$this->ensureNameQuoted($alias)] = $this->ensureNameQuoted($tableName);
+            }
+        }
+
+        return $cleanedUpTableNames;
+    }
+
+    /**
+     * Ensures name is wrapped with {{ and }}
+     * @param string $name
+     * @return string
+     */
+    private function ensureNameQuoted($name)
+    {
+        $name = str_replace(["'", '"', '`', '[', ']'], '', $name);
+        if ($name && !preg_match('/^{{.*}}$/', $name)) {
+            return '{{' . $name . '}}';
+        }
+
+        return $name;
     }
 
     /**
      * Sets the SELECT part of the query.
-     * @param string|array|Expression $columns the columns to be selected.
+     * @param string|array|ExpressionInterface $columns the columns to be selected.
      * Columns can be specified in either a string (e.g. "id, name") or an array (e.g. ['id', 'name']).
      * Columns can be prefixed with table names (e.g. "user.id") and/or contain column aliases (e.g. "user.id AS user_id").
      * The method will automatically quote the column names unless a column contains some parenthesis
      * (which means the column contains a DB expression). A DB expression may also be passed in form of
-     * an [[Expression]] object.
+     * an [[ExpressionInterface]] object.
      *
      * Note that if you are selecting an expression like `CONCAT(first_name, ' ', last_name)`, you should
      * use an array to specify the columns. Otherwise, the expression may be incorrectly split into several parts.
@@ -461,12 +636,7 @@ class Query extends Component implements QueryInterface
      */
     public function select($columns, $option = null)
     {
-        if ($columns instanceof Expression) {
-            $columns = [$columns];
-        } elseif (!is_array($columns)) {
-            $columns = preg_split('/\s*,\s*/', trim($columns), -1, PREG_SPLIT_NO_EMPTY);
-        }
-        $this->select = $columns;
+        $this->select = $this->normalizeSelect($columns);
         $this->selectOption = $option;
         return $this;
     }
@@ -481,24 +651,118 @@ class Query extends Component implements QueryInterface
      * $query->addSelect(["*", "CONCAT(first_name, ' ', last_name) AS full_name"])->one();
      * ```
      *
-     * @param string|array|Expression $columns the columns to add to the select. See [[select()]] for more
+     * @param string|array|ExpressionInterface $columns the columns to add to the select. See [[select()]] for more
      * details about the format of this parameter.
      * @return $this the query object itself
      * @see select()
      */
     public function addSelect($columns)
     {
-        if ($columns instanceof Expression) {
+        if ($this->select === null) {
+            return $this->select($columns);
+        }
+        if (!is_array($this->select)) {
+            $this->select = $this->normalizeSelect($this->select);
+        }
+        $this->select = array_merge($this->select, $this->normalizeSelect($columns));
+
+        return $this;
+    }
+
+    /**
+     * Normalizes the SELECT columns passed to [[select()]] or [[addSelect()]].
+     *
+     * @param string|array|ExpressionInterface $columns
+     * @return array
+     * @since 2.0.21
+     */
+    protected function normalizeSelect($columns)
+    {
+        if ($columns instanceof ExpressionInterface) {
             $columns = [$columns];
         } elseif (!is_array($columns)) {
             $columns = preg_split('/\s*,\s*/', trim($columns), -1, PREG_SPLIT_NO_EMPTY);
         }
-        if ($this->select === null) {
-            $this->select = $columns;
-        } else {
-            $this->select = array_merge($this->select, $columns);
+        $select = [];
+        foreach ($columns as $columnAlias => $columnDefinition) {
+            if (is_string($columnAlias)) {
+                // Already in the normalized format, good for them
+                $select[$columnAlias] = $columnDefinition;
+                continue;
+            }
+            if (is_string($columnDefinition)) {
+                if (
+                    preg_match('/^(.*?)(?i:\s+as\s+|\s+)([\w\-_\.]+)$/', $columnDefinition, $matches) &&
+                    !preg_match('/^\d+$/', $matches[2]) &&
+                    strpos($matches[2], '.') === false
+                ) {
+                    // Using "columnName as alias" or "columnName alias" syntax
+                    $select[$matches[2]] = $matches[1];
+                    continue;
+                }
+                if (strpos($columnDefinition, '(') === false) {
+                    // Normal column name, just alias it to itself to ensure it's not selected twice
+                    $select[$columnDefinition] = $columnDefinition;
+                    continue;
+                }
+            }
+            // Either a string calling a function, DB expression, or sub-query
+            $select[] = $columnDefinition;
         }
-        return $this;
+        return $select;
+    }
+
+    /**
+     * Returns unique column names excluding duplicates.
+     * Columns to be removed:
+     * - if column definition already present in SELECT part with same alias
+     * - if column definition without alias already present in SELECT part without alias too
+     * @param array $columns the columns to be merged to the select.
+     * @since 2.0.14
+     * @deprecated in 2.0.21
+     */
+    protected function getUniqueColumns($columns)
+    {
+        $unaliasedColumns = $this->getUnaliasedColumnsFromSelect();
+
+        $result = [];
+        foreach ($columns as $columnAlias => $columnDefinition) {
+            if (!$columnDefinition instanceof Query) {
+                if (is_string($columnAlias)) {
+                    $existsInSelect = isset($this->select[$columnAlias]) && $this->select[$columnAlias] === $columnDefinition;
+                    if ($existsInSelect) {
+                        continue;
+                    }
+                } elseif (is_int($columnAlias)) {
+                    $existsInSelect = in_array($columnDefinition, $unaliasedColumns, true);
+                    $existsInResultSet = in_array($columnDefinition, $result, true);
+                    if ($existsInSelect || $existsInResultSet) {
+                        continue;
+                    }
+                }
+            }
+
+            $result[$columnAlias] = $columnDefinition;
+        }
+        return $result;
+    }
+
+    /**
+     * @return array List of columns without aliases from SELECT statement.
+     * @since 2.0.14
+     * @deprecated in 2.0.21
+     */
+    protected function getUnaliasedColumnsFromSelect()
+    {
+        $result = [];
+        if (is_array($this->select)) {
+            foreach ($this->select as $name => $value) {
+                if (is_int($name)) {
+                    $result[] = $value;
+                }
+            }
+        }
+        return array_unique($result);
     }
 
     /**
@@ -514,7 +778,7 @@ class Query extends Component implements QueryInterface
 
     /**
      * Sets the FROM part of the query.
-     * @param string|array $tables the table(s) to be selected from. This can be either a string (e.g. `'user'`)
+     * @param string|array|ExpressionInterface $tables the table(s) to be selected from. This can be either a string (e.g. `'user'`)
      * or an array (e.g. `['user', 'profile']`) specifying one or several table names.
      * Table names can contain schema prefixes (e.g. `'public.user'`) and/or table aliases (e.g. `'user u'`).
      * The method will automatically quote the table names unless it contains some parenthesis
@@ -525,6 +789,8 @@ class Query extends Component implements QueryInterface
      *
      * Use a Query object to represent a sub-query. In this case, the corresponding array key will be used
      * as the alias for the sub-query.
+     *
+     * To specify the `FROM` part in plain SQL, you may pass an instance of [[ExpressionInterface]].
      *
      * Here are some examples:
      *
@@ -546,7 +812,10 @@ class Query extends Component implements QueryInterface
      */
     public function from($tables)
     {
-        if (!is_array($tables)) {
+        if ($tables instanceof ExpressionInterface) {
+            $tables = [$tables];
+        }
+        if (is_string($tables)) {
             $tables = preg_split('/\s*,\s*/', trim($tables), -1, PREG_SPLIT_NO_EMPTY);
         }
         $this->from = $tables;
@@ -561,9 +830,9 @@ class Query extends Component implements QueryInterface
      *
      * The `$condition` parameter should be either a string (e.g. `'id=1'`) or an array.
      *
-     * @inheritdoc
+     * {@inheritdoc}
      *
-     * @param string|array|Expression $condition the conditions that should be put in the WHERE part.
+     * @param string|array|ExpressionInterface $condition the conditions that should be put in the WHERE part.
      * @param array $params the parameters (name => value) to be bound to the query.
      * @return $this the query object itself
      * @see andWhere()
@@ -580,7 +849,7 @@ class Query extends Component implements QueryInterface
     /**
      * Adds an additional WHERE condition to the existing one.
      * The new condition and the existing one will be joined using the `AND` operator.
-     * @param string|array|Expression $condition the new WHERE condition. Please refer to [[where()]]
+     * @param string|array|ExpressionInterface $condition the new WHERE condition. Please refer to [[where()]]
      * on how to specify this parameter.
      * @param array $params the parameters (name => value) to be bound to the query.
      * @return $this the query object itself
@@ -603,7 +872,7 @@ class Query extends Component implements QueryInterface
     /**
      * Adds an additional WHERE condition to the existing one.
      * The new condition and the existing one will be joined using the `OR` operator.
-     * @param string|array|Expression $condition the new WHERE condition. Please refer to [[where()]]
+     * @param string|array|ExpressionInterface $condition the new WHERE condition. Please refer to [[where()]]
      * on how to specify this parameter.
      * @param array $params the parameters (name => value) to be bound to the query.
      * @return $this the query object itself
@@ -655,6 +924,7 @@ class Query extends Component implements QueryInterface
         } else {
             $operator = $defaultOperator;
         }
+
         return $this->andFilterWhere([$operator, $name, $value]);
     }
 
@@ -662,16 +932,18 @@ class Query extends Component implements QueryInterface
      * Appends a JOIN part to the query.
      * The first parameter specifies what type of join it is.
      * @param string $type the type of join, such as INNER JOIN, LEFT JOIN.
-     * @param string|array $table the table to be joined.
+     * @param string|array $table the table or sub-query to be joined.
      *
      * Use a string to represent the name of the table to be joined.
      * The table name can contain a schema prefix (e.g. 'public.user') and/or table alias (e.g. 'user u').
      * The method will automatically quote the table name unless it contains some parenthesis
      * (which means the table is given as a sub-query or DB expression).
      *
-     * Use an array to represent joining with a sub-query. The array must contain only one element.
-     * The value must be a [[Query]] object representing the sub-query while the corresponding key
-     * represents the alias for the sub-query.
+     * You may also specify the table as an array with one element, using the array key as the table alias
+     * (e.g. ['u' => 'user']).
+     *
+     * To join a sub-query, use an array with one element, with the value set to a [[Query]] object
+     * representing the sub-query, and the corresponding key representing the alias.
      *
      * @param string|array $on the join condition that should appear in the ON part.
      * Please refer to [[where()]] on how to specify this parameter.
@@ -696,16 +968,18 @@ class Query extends Component implements QueryInterface
 
     /**
      * Appends an INNER JOIN part to the query.
-     * @param string|array $table the table to be joined.
+     * @param string|array $table the table or sub-query to be joined.
      *
      * Use a string to represent the name of the table to be joined.
      * The table name can contain a schema prefix (e.g. 'public.user') and/or table alias (e.g. 'user u').
      * The method will automatically quote the table name unless it contains some parenthesis
      * (which means the table is given as a sub-query or DB expression).
      *
-     * Use an array to represent joining with a sub-query. The array must contain only one element.
-     * The value must be a [[Query]] object representing the sub-query while the corresponding key
-     * represents the alias for the sub-query.
+     * You may also specify the table as an array with one element, using the array key as the table alias
+     * (e.g. ['u' => 'user']).
+     *
+     * To join a sub-query, use an array with one element, with the value set to a [[Query]] object
+     * representing the sub-query, and the corresponding key representing the alias.
      *
      * @param string|array $on the join condition that should appear in the ON part.
      * Please refer to [[join()]] on how to specify this parameter.
@@ -720,16 +994,18 @@ class Query extends Component implements QueryInterface
 
     /**
      * Appends a LEFT OUTER JOIN part to the query.
-     * @param string|array $table the table to be joined.
+     * @param string|array $table the table or sub-query to be joined.
      *
      * Use a string to represent the name of the table to be joined.
      * The table name can contain a schema prefix (e.g. 'public.user') and/or table alias (e.g. 'user u').
      * The method will automatically quote the table name unless it contains some parenthesis
      * (which means the table is given as a sub-query or DB expression).
      *
-     * Use an array to represent joining with a sub-query. The array must contain only one element.
-     * The value must be a [[Query]] object representing the sub-query while the corresponding key
-     * represents the alias for the sub-query.
+     * You may also specify the table as an array with one element, using the array key as the table alias
+     * (e.g. ['u' => 'user']).
+     *
+     * To join a sub-query, use an array with one element, with the value set to a [[Query]] object
+     * representing the sub-query, and the corresponding key representing the alias.
      *
      * @param string|array $on the join condition that should appear in the ON part.
      * Please refer to [[join()]] on how to specify this parameter.
@@ -744,16 +1020,18 @@ class Query extends Component implements QueryInterface
 
     /**
      * Appends a RIGHT OUTER JOIN part to the query.
-     * @param string|array $table the table to be joined.
+     * @param string|array $table the table or sub-query to be joined.
      *
      * Use a string to represent the name of the table to be joined.
      * The table name can contain a schema prefix (e.g. 'public.user') and/or table alias (e.g. 'user u').
      * The method will automatically quote the table name unless it contains some parenthesis
      * (which means the table is given as a sub-query or DB expression).
      *
-     * Use an array to represent joining with a sub-query. The array must contain only one element.
-     * The value must be a [[Query]] object representing the sub-query while the corresponding key
-     * represents the alias for the sub-query.
+     * You may also specify the table as an array with one element, using the array key as the table alias
+     * (e.g. ['u' => 'user']).
+     *
+     * To join a sub-query, use an array with one element, with the value set to a [[Query]] object
+     * representing the sub-query, and the corresponding key representing the alias.
      *
      * @param string|array $on the join condition that should appear in the ON part.
      * Please refer to [[join()]] on how to specify this parameter.
@@ -768,7 +1046,7 @@ class Query extends Component implements QueryInterface
 
     /**
      * Sets the GROUP BY part of the query.
-     * @param string|array|Expression $columns the columns to be grouped by.
+     * @param string|array|ExpressionInterface $columns the columns to be grouped by.
      * Columns can be specified in either a string (e.g. "id, name") or an array (e.g. ['id', 'name']).
      * The method will automatically quote the column names unless a column contains some parenthesis
      * (which means the column contains a DB expression).
@@ -777,13 +1055,14 @@ class Query extends Component implements QueryInterface
      * to represent the group-by information. Otherwise, the method will not be able to correctly determine
      * the group-by columns.
      *
-     * Since version 2.0.7, an [[Expression]] object can be passed to specify the GROUP BY part explicitly in plain SQL.
+     * Since version 2.0.7, an [[ExpressionInterface]] object can be passed to specify the GROUP BY part explicitly in plain SQL.
+     * Since version 2.0.14, an [[ExpressionInterface]] object can be passed as well.
      * @return $this the query object itself
      * @see addGroupBy()
      */
     public function groupBy($columns)
     {
-        if ($columns instanceof Expression) {
+        if ($columns instanceof ExpressionInterface) {
             $columns = [$columns];
         } elseif (!is_array($columns)) {
             $columns = preg_split('/\s*,\s*/', trim($columns), -1, PREG_SPLIT_NO_EMPTY);
@@ -794,7 +1073,7 @@ class Query extends Component implements QueryInterface
 
     /**
      * Adds additional group-by columns to the existing ones.
-     * @param string|array $columns additional columns to be grouped by.
+     * @param string|array|ExpressionInterface $columns additional columns to be grouped by.
      * Columns can be specified in either a string (e.g. "id, name") or an array (e.g. ['id', 'name']).
      * The method will automatically quote the column names unless a column contains some parenthesis
      * (which means the column contains a DB expression).
@@ -804,12 +1083,13 @@ class Query extends Component implements QueryInterface
      * the group-by columns.
      *
      * Since version 2.0.7, an [[Expression]] object can be passed to specify the GROUP BY part explicitly in plain SQL.
+     * Since version 2.0.14, an [[ExpressionInterface]] object can be passed as well.
      * @return $this the query object itself
      * @see groupBy()
      */
     public function addGroupBy($columns)
     {
-        if ($columns instanceof Expression) {
+        if ($columns instanceof ExpressionInterface) {
             $columns = [$columns];
         } elseif (!is_array($columns)) {
             $columns = preg_split('/\s*,\s*/', trim($columns), -1, PREG_SPLIT_NO_EMPTY);
@@ -819,12 +1099,13 @@ class Query extends Component implements QueryInterface
         } else {
             $this->groupBy = array_merge($this->groupBy, $columns);
         }
+
         return $this;
     }
 
     /**
      * Sets the HAVING part of the query.
-     * @param string|array|Expression $condition the conditions to be put after HAVING.
+     * @param string|array|ExpressionInterface $condition the conditions to be put after HAVING.
      * Please refer to [[where()]] on how to specify this parameter.
      * @param array $params the parameters (name => value) to be bound to the query.
      * @return $this the query object itself
@@ -841,7 +1122,7 @@ class Query extends Component implements QueryInterface
     /**
      * Adds an additional HAVING condition to the existing one.
      * The new condition and the existing one will be joined using the `AND` operator.
-     * @param string|array|Expression $condition the new HAVING condition. Please refer to [[where()]]
+     * @param string|array|ExpressionInterface $condition the new HAVING condition. Please refer to [[where()]]
      * on how to specify this parameter.
      * @param array $params the parameters (name => value) to be bound to the query.
      * @return $this the query object itself
@@ -862,7 +1143,7 @@ class Query extends Component implements QueryInterface
     /**
      * Adds an additional HAVING condition to the existing one.
      * The new condition and the existing one will be joined using the `OR` operator.
-     * @param string|array|Expression $condition the new HAVING condition. Please refer to [[where()]]
+     * @param string|array|ExpressionInterface $condition the new HAVING condition. Please refer to [[where()]]
      * on how to specify this parameter.
      * @param array $params the parameters (name => value) to be bound to the query.
      * @return $this the query object itself
@@ -914,6 +1195,7 @@ class Query extends Component implements QueryInterface
         if ($condition !== []) {
             $this->having($condition);
         }
+
         return $this;
     }
 
@@ -938,6 +1220,7 @@ class Query extends Component implements QueryInterface
         if ($condition !== []) {
             $this->andHaving($condition);
         }
+
         return $this;
     }
 
@@ -962,6 +1245,7 @@ class Query extends Component implements QueryInterface
         if ($condition !== []) {
             $this->orHaving($condition);
         }
+
         return $this;
     }
 
@@ -974,6 +1258,20 @@ class Query extends Component implements QueryInterface
     public function union($sql, $all = false)
     {
         $this->union[] = ['query' => $sql, 'all' => $all];
+        return $this;
+    }
+
+    /**
+     * Prepends a SQL statement using WITH syntax.
+     * @param string|Query $query the SQL statement to be prepended using WITH
+     * @param string $alias query alias in WITH construction
+     * @param bool $recursive TRUE if using WITH RECURSIVE and FALSE if using WITH
+     * @return $this the query object itself
+     * @since 2.0.35
+     */
+    public function withQuery($query, $alias, $recursive = false)
+    {
+        $this->withQueries[] = ['query' => $query, 'alias' => $alias, 'recursive' => $recursive];
         return $this;
     }
 
@@ -1012,7 +1310,54 @@ class Query extends Component implements QueryInterface
                 }
             }
         }
+
         return $this;
+    }
+
+    /**
+     * Enables query cache for this Query.
+     * @param int|true $duration the number of seconds that query results can remain valid in cache.
+     * Use 0 to indicate that the cached data will never expire.
+     * Use a negative number to indicate that query cache should not be used.
+     * Use boolean `true` to indicate that [[Connection::queryCacheDuration]] should be used.
+     * Defaults to `true`.
+     * @param \yii\caching\Dependency $dependency the cache dependency associated with the cached result.
+     * @return $this the Query object itself
+     * @since 2.0.14
+     */
+    public function cache($duration = true, $dependency = null)
+    {
+        $this->queryCacheDuration = $duration;
+        $this->queryCacheDependency = $dependency;
+        return $this;
+    }
+
+    /**
+     * Disables query cache for this Query.
+     * @return $this the Query object itself
+     * @since 2.0.14
+     */
+    public function noCache()
+    {
+        $this->queryCacheDuration = -1;
+        return $this;
+    }
+
+    /**
+     * Sets $command cache, if this query has enabled caching.
+     *
+     * @param Command $command
+     * @return Command
+     * @since 2.0.14
+     */
+    protected function setCommandCache($command)
+    {
+        if ($this->queryCacheDuration !== null || $this->queryCacheDependency !== null) {
+            $duration = $this->queryCacheDuration === true ? null : $this->queryCacheDuration;
+            $command->cache($duration, $this->queryCacheDependency);
+        }
+
+        return $command;
     }
 
     /**
@@ -1038,6 +1383,16 @@ class Query extends Component implements QueryInterface
             'having' => $from->having,
             'union' => $from->union,
             'params' => $from->params,
+            'withQueries' => $from->withQueries,
         ]);
+    }
+
+    /**
+     * Returns the SQL representation of Query
+     * @return string
+     */
+    public function __toString()
+    {
+        return serialize($this);
     }
 }

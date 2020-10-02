@@ -1,4 +1,9 @@
 <?php
+/**
+ * @link http://www.yiiframework.com/
+ * @copyright Copyright (c) 2008 Yii Software LLC
+ * @license http://www.yiiframework.com/license/
+ */
 
 namespace yiiunit\framework\rest;
 
@@ -21,7 +26,6 @@ class SerializerTest extends TestCase
                     'scriptUrl' => '/index.php',
                 ],
             ],
-
         ], 'yii\web\Application');
 
         TestModel::$fields = ['field1', 'field2'];
@@ -45,7 +49,7 @@ class SerializerTest extends TestCase
             [
                 'field' => 'field2',
                 'message' => 'Multiple error 1',
-            ]
+            ],
         ], $serializer->serialize($model));
     }
 
@@ -108,8 +112,149 @@ class SerializerTest extends TestCase
         ], $serializer->serialize($model));
     }
 
+    public function testNestedExpand()
+    {
+        $serializer = new Serializer();
+        $model = new TestModel();
+        $model->extraField3 = new TestModel2();
+
+        TestModel::$extraFields = ['extraField3'];
+        TestModel2::$extraFields = ['extraField4'];
+
+        \Yii::$app->request->setQueryParams(['expand' => 'extraField3.extraField4']);
+        $this->assertSame([
+            'field1' => 'test',
+            'field2' => 2,
+            'extraField3' => [
+                'field3' => 'test2',
+                'field4' => 8,
+                'extraField4' => 'testExtra2',
+            ],
+        ], $serializer->serialize($model));
+    }
+
+    public function testFields()
+    {
+        $serializer = new Serializer();
+        $model = new TestModel();
+        $model->extraField3 = new TestModel2();
+
+        TestModel::$extraFields = ['extraField3'];
+
+        \Yii::$app->request->setQueryParams([]);
+        $this->assertSame([
+            'field1' => 'test',
+            'field2' => 2,
+        ], $serializer->serialize($model));
+
+        \Yii::$app->request->setQueryParams(['fields' => '*']);
+        $this->assertSame([
+            'field1' => 'test',
+            'field2' => 2,
+        ], $serializer->serialize($model));
+
+        \Yii::$app->request->setQueryParams(
+            [
+                'fields' => 'field1,extraField3.field3',
+                'expand' => 'extraField3.extraField4'
+            ]
+        );
+        $this->assertSame([
+            'field1' => 'test',
+            'extraField3' => [
+                'field3' => 'test2',
+                'extraField4' => 'testExtra2',
+            ],
+        ], $serializer->serialize($model));
+
+        \Yii::$app->request->setQueryParams(
+            [
+                'fields' => 'extraField3.*',
+                'expand' => 'extraField3',
+            ]
+        );
+        $this->assertSame([
+            'extraField3' => [
+                'field3' => 'test2',
+                'field4' => 8,
+            ],
+        ], $serializer->serialize($model));
+
+        \Yii::$app->request->setQueryParams(
+            [
+                'fields' => 'extraField3.*',
+                'expand' => 'extraField3.extraField4'
+            ]
+        );
+        $this->assertSame([
+            'extraField3' => [
+                'field3' => 'test2',
+                'field4' => 8,
+                'extraField4' => 'testExtra2',
+            ],
+        ], $serializer->serialize($model));
+
+        $model->extraField3 = [
+            new TestModel2(),
+            new TestModel2(),
+        ];
+
+        \Yii::$app->request->setQueryParams(
+            [
+                'fields' => 'extraField3.*',
+                'expand' => 'extraField3',
+            ]
+        );
+        $this->assertSame([
+            'extraField3' => [
+                [
+                    'field3' => 'test2',
+                    'field4' => 8,
+                ],
+                [
+                    'field3' => 'test2',
+                    'field4' => 8,
+                ],
+            ],
+        ], $serializer->serialize($model));
+
+        \Yii::$app->request->setQueryParams(
+            [
+                'fields' => '*,extraField3.*',
+                'expand' => 'extraField3',
+            ]
+        );
+        $this->assertSame([
+            'field1' => 'test',
+            'field2' => 2,
+            'extraField3' => [
+                [
+                    'field3' => 'test2',
+                    'field4' => 8,
+                ],
+                [
+                    'field3' => 'test2',
+                    'field4' => 8,
+                ],
+            ],
+        ], $serializer->serialize($model));
+
+        \Yii::$app->request->setQueryParams(
+            [
+                'fields' => 'extraField3.field3',
+                'expand' => 'extraField3',
+            ]
+        );
+        $this->assertSame([
+            'extraField3' => [
+                ['field3' => 'test2'],
+                ['field3' => 'test2'],
+            ],
+        ], $serializer->serialize($model));
+    }
+
     /**
-     * https://github.com/yiisoft/yii2/issues/12107
+     * @see https://github.com/yiisoft/yii2/issues/12107
      */
     public function testExpandInvalidInput()
     {
@@ -142,7 +287,7 @@ class SerializerTest extends TestCase
                 new ArrayDataProvider([
                     'allModels' => [
                         ['id' => 1, 'username' => 'Bob'],
-                        ['id' => 2, 'username' => 'Tom']
+                        ['id' => 2, 'username' => 'Tom'],
                     ],
                     'pagination' => [
                         'route' => '/',
@@ -150,71 +295,71 @@ class SerializerTest extends TestCase
                 ]),
                 [
                     ['id' => 1, 'username' => 'Bob'],
-                    ['id' => 2, 'username' => 'Tom']
-                ]
+                    ['id' => 2, 'username' => 'Tom'],
+                ],
             ],
             [
                 new ArrayDataProvider([
                     'allModels' => [
                         ['id' => 1, 'username' => 'Bob'],
-                        ['id' => 2, 'username' => 'Tom']
+                        ['id' => 2, 'username' => 'Tom'],
                     ],
                     'pagination' => [
                         'route' => '/',
                         'pageSize' => 1,
-                        'page' => 0
+                        'page' => 0,
                     ],
                 ]),
                 [
                     ['id' => 1, 'username' => 'Bob'],
-                ]
+                ],
             ],
             [
                 new ArrayDataProvider([
                     'allModels' => [
                         ['id' => 1, 'username' => 'Bob'],
-                        ['id' => 2, 'username' => 'Tom']
+                        ['id' => 2, 'username' => 'Tom'],
                     ],
                     'pagination' => [
                         'route' => '/',
                         'pageSize' => 1,
-                        'page' => 1
+                        'page' => 1,
                     ],
                 ]),
                 [
-                    ['id' => 2, 'username' => 'Tom']
-                ]
+                    ['id' => 2, 'username' => 'Tom'],
+                ],
             ],
             [
                 new ArrayDataProvider([
                     'allModels' => [
                         'Bob' => ['id' => 1, 'username' => 'Bob'],
-                        'Tom' => ['id' => 2, 'username' => 'Tom']
+                        'Tom' => ['id' => 2, 'username' => 'Tom'],
                     ],
                     'pagination' => [
                         'route' => '/',
                         'pageSize' => 1,
-                        'page' => 1
+                        'page' => 1,
                     ],
                 ]),
                 [
-                    ['id' => 2, 'username' => 'Tom']
-                ]
+                    ['id' => 2, 'username' => 'Tom'],
+                ],
             ],
             [
                 new ArrayDataProvider([
                     'allModels' => [
                         ['id' => 1, 'username' => 'Bob'],
-                        ['id' => 2, 'username' => 'Tom']
+                        ['id' => 2, 'username' => 'Tom'],
                     ],
                     'pagination' => [
                         'route' => '/',
                         'pageSize' => 1,
-                        'page' => 1
+                        'page' => 1,
                     ],
                 ]),
                 [
-                    1 => ['id' => 2, 'username' => 'Tom']
+                    1 => ['id' => 2, 'username' => 'Tom'],
                 ],
                 true,
             ],
@@ -227,11 +372,11 @@ class SerializerTest extends TestCase
                     'pagination' => [
                         'route' => '/',
                         'pageSize' => 1,
-                        'page' => 1
+                        'page' => 1,
                     ],
                 ]),
                 [
-                    'Tom' => ['id' => 2, 'username' => 'Tom']
+                    'Tom' => ['id' => 2, 'username' => 'Tom'],
                 ],
                 true,
             ],
@@ -269,6 +414,60 @@ class SerializerTest extends TestCase
 
         $this->assertEquals($expectedResult, $serializer->serialize($dataProvider));
     }
+
+    /**
+     * @see https://github.com/yiisoft/yii2/issues/16334
+     */
+    public function testSerializeJsonSerializable()
+    {
+        $serializer = new Serializer();
+        $model = new TestModel3();
+
+        $this->assertEquals(['customField' => 'test3/test4'], $serializer->serialize($model));
+    }
+
+    /**
+     * @see https://github.com/yiisoft/yii2/issues/16334
+     */
+    public function testSerializeArrayableWithJsonSerializableAttribute()
+    {
+        $serializer = new Serializer();
+        $model = new TestModel4();
+
+        $this->assertEquals([
+            'field3' => 'test3',
+            'field4' => 'test4',
+            'testModel3' => ['customField' => 'test3/test4'],
+            'testModelArray' => [['customField' => 'test3/test4']],
+        ],
+        $serializer->serialize($model));
+    }
+
+    /**
+     * @see https://github.com/yiisoft/yii2/issues/17886
+     */
+    public function testSerializeArray()
+    {
+        $serializer = new Serializer();
+        $model1 = new TestModel();
+        $model2 = new TestModel();
+        $model3 = new TestModel();
+
+        $this->assertSame([
+            [
+                'field1' => 'test',
+                'field2' => 2,
+            ],
+            [
+                'field1' => 'test',
+                'field2' => 2,
+            ],
+            'testKey' => [
+                'field1' => 'test',
+                'field2' => 2,
+            ],
+        ], $serializer->serialize([$model1, $model2, 'testKey' => $model3]));
+    }
 }
 
 class TestModel extends Model
@@ -280,6 +479,7 @@ class TestModel extends Model
     public $field2 = 2;
     public $extraField1 = 'testExtra';
     public $extraField2 = 42;
+    public $extraField3;
 
     public function fields()
     {
@@ -289,5 +489,84 @@ class TestModel extends Model
     public function extraFields()
     {
         return static::$extraFields;
+    }
+}
+
+class TestModel2 extends Model
+{
+    public static $fields = ['field3', 'field4'];
+    public static $extraFields = [];
+
+    public $field3 = 'test2';
+    public $field4 = 8;
+    public $extraField4 = 'testExtra2';
+
+    public function fields()
+    {
+        return static::$fields;
+    }
+
+    public function extraFields()
+    {
+        return static::$extraFields;
+    }
+}
+
+class TestModel3 extends Model implements \JsonSerializable
+{
+    public static $fields = ['field3', 'field4'];
+    public static $extraFields = [];
+
+    public $field3 = 'test3';
+    public $field4 = 'test4';
+    public $extraField4 = 'testExtra2';
+
+    public function fields()
+    {
+        return static::$fields;
+    }
+
+    public function extraFields()
+    {
+        return static::$extraFields;
+    }
+
+    public function jsonSerialize()
+    {
+        return [
+            'customField' => $this->field3.'/'.$this->field4,
+        ];
+    }
+}
+
+class TestModel4 extends Model
+{
+    public static $fields = ['field3', 'field4'];
+    public static $extraFields = [];
+
+    public $field3 = 'test3';
+    public $field4 = 'test4';
+    public $extraField4 = 'testExtra2';
+
+    public function fields()
+    {
+        $fields = static::$fields;
+        $fields['testModel3'] = function() {
+            return $this->getTestModel3();
+        };
+        $fields['testModelArray'] = function() {
+            return [$this->getTestModel3()];
+        };
+        return $fields;
+    }
+
+    public function extraFields()
+    {
+        return static::$extraFields;
+    }
+
+    public function getTestModel3()
+    {
+        return new TestModel3();
     }
 }

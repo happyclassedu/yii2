@@ -1,11 +1,17 @@
 <?php
+/**
+ * @link http://www.yiiframework.com/
+ * @copyright Copyright (c) 2008 Yii Software LLC
+ * @license http://www.yiiframework.com/license/
+ */
 
 namespace yiiunit\framework\web;
 
-use yiiunit\TestCase;
 use yii\web\UploadedFile;
-use yiiunit\framework\web\stubs\VendorImage;
+use yiiunit\framework\web\mocks\UploadedFileMock;
 use yiiunit\framework\web\stubs\ModelStub;
+use yiiunit\framework\web\stubs\VendorImage;
+use yiiunit\TestCase;
 
 /**
  * @group web
@@ -26,7 +32,18 @@ class UploadedFileTest extends TestCase
             'tmp_name' => md5(mt_rand()),
             'type' => 'image/jpeg',
             'size' => mt_rand(1000, 10000),
-            'error' => 0
+            'error' => '0',
+        ];
+    }
+
+    private function generateTempFileData()
+    {
+        return [
+            'name' => md5(mt_rand()),
+            'tmp_name' => tempnam(sys_get_temp_dir(), ''),
+            'type' => 'image/jpeg',
+            'size' => mt_rand(1000, 10000),
+            'error' => '0',
         ];
     }
 
@@ -41,6 +58,8 @@ class UploadedFileTest extends TestCase
         $_FILES['ModelStub[vendor_images][]'] = $this->generateFakeFileData();
         $_FILES['ModelStub[vendor_images][]'] = $this->generateFakeFileData();
         $_FILES['ModelStub[vendor_images][]'] = $this->generateFakeFileData();
+
+        $_FILES['ModelStub[temp_image]'] = $this->generateTempFileData();
     }
 
     // Tests :
@@ -50,8 +69,8 @@ class UploadedFileTest extends TestCase
         $productImage = UploadedFile::getInstance(new ModelStub(), 'prod_image');
         $vendorImage = VendorImage::getInstance(new ModelStub(), 'vendor_image');
 
-        $this->assertTrue($productImage instanceof UploadedFile);
-        $this->assertTrue($vendorImage instanceof VendorImage);
+        $this->assertInstanceOf(UploadedFile::className(), $productImage);
+        $this->assertInstanceOf(VendorImage::className(), $vendorImage);
     }
 
     public function testGetInstances()
@@ -60,11 +79,41 @@ class UploadedFileTest extends TestCase
         $vendorImages = VendorImage::getInstances(new ModelStub(), 'vendor_images');
 
         foreach ($productImages as $productImage) {
-            $this->assertTrue($productImage instanceof UploadedFile);
+            $this->assertInstanceOf(UploadedFile::className(), $productImage);
         }
 
         foreach ($vendorImages as $vendorImage) {
-            $this->assertTrue($vendorImage instanceof VendorImage);
+            $this->assertInstanceOf(VendorImage::className(), $vendorImage);
         }
+    }
+
+    public function testSaveAs()
+    {
+        $tmpImage = UploadedFile::getInstance(new ModelStub(), 'temp_image');
+        $targetFile = '@runtime/test_saved_uploaded_file_' . time();
+
+        $this->assertEquals(true, $tmpImage->saveAs($targetFile, $deleteTempFile = false));
+        $this->markTestIncomplete("`$deleteTempFile` flag simply uses php's move_uploaded_file() method, so this not work in test");
+
+        @unlink($targetFile);
+    }
+
+    public function testSaveFileFromMultipartFormDataParser()
+    {
+        $_FILES = [];
+        UploadedFile::reset();
+        $model = new ModelStub();
+        $targetFile = '@runtime/test_saved_uploaded_file_' . time();
+
+        (new MultipartFormDataParserTest)->testParse();
+        $_FILES['ModelStub'] = $_FILES['Item']; // $_FILES[Item] here from testParse() above
+        $tmpFile = UploadedFile::getInstance($model, 'file');
+
+        $this->assertEquals($tmpFile->saveAs($targetFile, $deleteTempFile = false), true);
+        $this->assertEquals($tmpFile->saveAs($targetFile), true);
+
+        $this->assertEquals($tmpFile->saveAs($targetFile), false); // has deleted before
+
+        @unlink($targetFile);
     }
 }

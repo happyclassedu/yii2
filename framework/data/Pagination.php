@@ -8,7 +8,7 @@
 namespace yii\data;
 
 use Yii;
-use yii\base\Object;
+use yii\base\BaseObject;
 use yii\web\Link;
 use yii\web\Linkable;
 use yii\web\Request;
@@ -73,7 +73,7 @@ use yii\web\Request;
  * @author Qiang Xue <qiang.xue@gmail.com>
  * @since 2.0
  */
-class Pagination extends Object implements Linkable
+class Pagination extends BaseObject implements Linkable
 {
     const LINK_NEXT = 'next';
     const LINK_PREV = 'prev';
@@ -153,11 +153,11 @@ class Pagination extends Object implements Linkable
         $pageSize = $this->getPageSize();
         if ($pageSize < 1) {
             return $this->totalCount > 0 ? 1 : 0;
-        } else {
-            $totalCount = $this->totalCount < 0 ? 0 : (int) $this->totalCount;
-
-            return (int) (($totalCount + $pageSize - 1) / $pageSize);
         }
+
+        $totalCount = $this->totalCount < 0 ? 0 : (int) $this->totalCount;
+
+        return (int) (($totalCount + $pageSize - 1) / $pageSize);
     }
 
     private $_page;
@@ -213,7 +213,7 @@ class Pagination extends Object implements Linkable
     public function getPageSize()
     {
         if ($this->_pageSize === null) {
-            if (empty($this->pageSizeLimit)) {
+            if (empty($this->pageSizeLimit) || !isset($this->pageSizeLimit[0], $this->pageSizeLimit[1])) {
                 $pageSize = $this->defaultPageSize;
                 $this->setPageSize($pageSize);
             } else {
@@ -235,7 +235,7 @@ class Pagination extends Object implements Linkable
             $this->_pageSize = null;
         } else {
             $value = (int) $value;
-            if ($validatePageSize && isset($this->pageSizeLimit[0], $this->pageSizeLimit[1]) && count($this->pageSizeLimit) === 2) {
+            if ($validatePageSize && isset($this->pageSizeLimit[0], $this->pageSizeLimit[1])) {
                 if ($value < $this->pageSizeLimit[0]) {
                     $value = $this->pageSizeLimit[0];
                 } elseif ($value > $this->pageSizeLimit[1]) {
@@ -281,9 +281,9 @@ class Pagination extends Object implements Linkable
         $urlManager = $this->urlManager === null ? Yii::$app->getUrlManager() : $this->urlManager;
         if ($absolute) {
             return $urlManager->createAbsoluteUrl($params);
-        } else {
-            return $urlManager->createUrl($params);
         }
+
+        return $urlManager->createUrl($params);
     }
 
     /**
@@ -319,16 +319,17 @@ class Pagination extends Object implements Linkable
     {
         $currentPage = $this->getPage();
         $pageCount = $this->getPageCount();
-        $links = [
-            Link::REL_SELF => $this->createUrl($currentPage, null, $absolute),
-        ];
-        if ($currentPage > 0) {
+
+        $links = [Link::REL_SELF => $this->createUrl($currentPage, null, $absolute)];
+        if ($pageCount > 0) {
             $links[self::LINK_FIRST] = $this->createUrl(0, null, $absolute);
-            $links[self::LINK_PREV] = $this->createUrl($currentPage - 1, null, $absolute);
-        }
-        if ($currentPage < $pageCount - 1) {
-            $links[self::LINK_NEXT] = $this->createUrl($currentPage + 1, null, $absolute);
             $links[self::LINK_LAST] = $this->createUrl($pageCount - 1, null, $absolute);
+            if ($currentPage > 0) {
+                $links[self::LINK_PREV] = $this->createUrl($currentPage - 1, null, $absolute);
+            }
+            if ($currentPage < $pageCount - 1) {
+                $links[self::LINK_NEXT] = $this->createUrl($currentPage + 1, null, $absolute);
+            }
         }
 
         return $links;
