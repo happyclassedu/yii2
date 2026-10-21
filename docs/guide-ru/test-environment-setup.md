@@ -14,7 +14,7 @@ Yii 2 официально поддерживает интеграцию с фр
 [`yii2-basic`](https://github.com/yiisoft/yii2-app-basic) и
 [`yii2-advanced`](https://github.com/yiisoft/yii2-app-advanced).
 
-Для того, чтобы запустить тесты необходимо установить [Codeception](https://github.com/Codeception/Codeception).
+Для того, чтобы запустить тесты, необходимо установить [Codeception](https://github.com/Codeception/Codeception).
 Сделать это можно как локально, то есть только для текущего проекта, так и глобально для компьютера разработчика.
 
 Для локальной установки используйте следующие команды:
@@ -47,3 +47,27 @@ Changed current directory to <directory>
   путём запуска команды `codecept` без указания пути. Тем не менее, данный подход может не подойти. К примеру, в двух 
   разных проектах может потребоваться установить разные версии Codeception. Для простоты все команды в разделах про
   тестирование используются так, будто Codeception установлен глобально.
+  
+### Настройка веб-сервера Apache
+
+Если вы используете Apache и настроили его как описано в разделе «[Установка Yii](start-installation.md)», то для тестов вам необходимо создать отдельный виртуальный хост который будет работать с той же папкой, но использовать входной скрипт `index-test.php`:
+
+```
+<VirtualHost *:80>
+    DocumentRoot "path/to/basic/web"
+    ServerName mysite-test
+    <Directory "path/to/basic/web">
+        Order Allow,Deny
+        Allow from all
+        AddDefaultCharset utf-8
+        DirectoryIndex index-test.php
+        RewriteEngine on
+        RewriteCond %{REQUEST_FILENAME} !-f
+        RewriteCond %{REQUEST_FILENAME} !-d
+        RewriteRule . index-test.php
+    </Directory>
+</VirtualHost>
+```
+
+Так мы укажем веб серверу перенаправлять все запросы на скрипт `index-test.php`.
+> Note: Обратите внимание, что здесь мы указываем параметр `DirectoryIndex`, помимо тех параметров, которые были указаны для первого хоста. Это сделано с той целью, чтобы при обращении к главной странице по адресу `mysite-test` также использовался бы скрипт `index-test.php`.

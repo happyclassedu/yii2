@@ -1,19 +1,20 @@
 <?php
+
 /**
- * @link http://www.yiiframework.com/
+ * @link https://www.yiiframework.com/
  * @copyright Copyright (c) 2008 Yii Software LLC
- * @license http://www.yiiframework.com/license/
+ * @license https://www.yiiframework.com/license/
  */
 
 namespace yii\di;
 
-use Yii;
 use Closure;
+use Yii;
 use yii\base\Component;
 use yii\base\InvalidConfigException;
 
 /**
- * ServiceLocator implements a [service locator](http://en.wikipedia.org/wiki/Service_locator_pattern).
+ * ServiceLocator implements a [service locator](https://en.wikipedia.org/wiki/Service_locator_pattern).
  *
  * To use ServiceLocator, you first need to register component IDs with the corresponding component
  * definitions with the locator by calling [[set()]] or [[setComponents()]].
@@ -22,7 +23,7 @@ use yii\base\InvalidConfigException;
  *
  * For example,
  *
- * ```php
+ * ```
  * $locator = new \yii\di\ServiceLocator;
  * $locator->setComponents([
  *     'db' => [
@@ -40,6 +41,7 @@ use yii\base\InvalidConfigException;
  * ```
  *
  * Because [[\yii\base\Module]] extends from ServiceLocator, modules and the application are all service locators.
+ * Modules add [tree traversal](guide:concept-service-locator#tree-traversal) for service resolution.
  *
  * For more details and usage information on ServiceLocator, see the [guide article on service locators](guide:concept-service-locator).
  *
@@ -71,9 +73,9 @@ class ServiceLocator extends Component
     {
         if ($this->has($name)) {
             return $this->get($name);
-        } else {
-            return parent::__get($name);
         }
+
+        return parent::__get($name);
     }
 
     /**
@@ -86,9 +88,9 @@ class ServiceLocator extends Component
     {
         if ($this->has($name)) {
             return true;
-        } else {
-            return parent::__isset($name);
         }
+
+        return parent::__isset($name);
     }
 
     /**
@@ -115,7 +117,7 @@ class ServiceLocator extends Component
      *
      * @param string $id component ID (e.g. `db`).
      * @param bool $throwException whether to throw an exception if `$id` is not registered with the locator before.
-     * @return object|null the component of the specified ID. If `$throwException` is false and `$id`
+     * @return ($throwException is true ? object : object|null) the component of the specified ID. If `$throwException` is false and `$id`
      * is not registered before, null will be returned.
      * @throws InvalidConfigException if `$id` refers to a nonexistent component ID
      * @see has()
@@ -131,14 +133,14 @@ class ServiceLocator extends Component
             $definition = $this->_definitions[$id];
             if (is_object($definition) && !$definition instanceof Closure) {
                 return $this->_components[$id] = $definition;
-            } else {
-                return $this->_components[$id] = Yii::createObject($definition);
             }
+
+            return $this->_components[$id] = Yii::createObject($definition);
         } elseif ($throwException) {
             throw new InvalidConfigException("Unknown component ID: $id");
-        } else {
-            return null;
         }
+
+        return null;
     }
 
     /**
@@ -146,7 +148,7 @@ class ServiceLocator extends Component
      *
      * For example,
      *
-     * ```php
+     * ```
      * // a class name
      * $locator->set('cache', 'yii\caching\FileCache');
      *
@@ -198,7 +200,11 @@ class ServiceLocator extends Component
             $this->_definitions[$id] = $definition;
         } elseif (is_array($definition)) {
             // a configuration array
-            if (isset($definition['class'])) {
+            if (isset($definition['__class'])) {
+                $this->_definitions[$id] = $definition;
+                $this->_definitions[$id]['class'] = $definition['__class'];
+                unset($this->_definitions[$id]['__class']);
+            } elseif (isset($definition['class'])) {
                 $this->_definitions[$id] = $definition;
             } else {
                 throw new InvalidConfigException("The configuration for the \"$id\" component must contain a \"class\" element.");
@@ -239,7 +245,7 @@ class ServiceLocator extends Component
      *
      * The following is an example for registering two component definitions:
      *
-     * ```php
+     * ```
      * [
      *     'db' => [
      *         'class' => 'yii\db\Connection',

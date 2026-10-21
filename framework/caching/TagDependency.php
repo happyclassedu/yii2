@@ -1,8 +1,9 @@
 <?php
+
 /**
- * @link http://www.yiiframework.com/
+ * @link https://www.yiiframework.com/
  * @copyright Copyright (c) 2008 Yii Software LLC
- * @license http://www.yiiframework.com/license/
+ * @license https://www.yiiframework.com/license/
  */
 
 namespace yii\caching;
@@ -12,7 +13,7 @@ namespace yii\caching;
  *
  * By calling [[invalidate()]], you can invalidate all cached data items that are associated with the specified tag name(s).
  *
- * ```php
+ * ```
  * // setting multiple cache keys to store data forever and tagging them with "user-123"
  * Yii::$app->cache->set('user_42_profile', '', 0, new TagDependency(['tags' => 'user-123']));
  * Yii::$app->cache->set('user_42_stats', '', 0, new TagDependency(['tags' => 'user-123']));
@@ -37,7 +38,7 @@ class TagDependency extends Dependency
     /**
      * Generates the data needed to determine if dependency has been changed.
      * This method does nothing in this class.
-     * @param Cache $cache the cache component that is currently evaluating this dependency
+     * @param CacheInterface $cache the cache component that is currently evaluating this dependency
      * @return mixed the data needed to determine if dependency has been changed.
      */
     protected function generateDependencyData($cache)
@@ -58,7 +59,7 @@ class TagDependency extends Dependency
     }
 
     /**
-     * @inheritdoc
+     * {@inheritdoc}
      */
     public function isChanged($cache)
     {
@@ -68,7 +69,7 @@ class TagDependency extends Dependency
 
     /**
      * Invalidates all of the cached data items that are associated with any of the specified [[tags]].
-     * @param Cache $cache the cache component that caches the data items
+     * @param CacheInterface $cache the cache component that caches the data items
      * @param string|array $tags
      */
     public static function invalidate($cache, $tags)
@@ -82,7 +83,7 @@ class TagDependency extends Dependency
 
     /**
      * Generates the timestamp for the specified cache keys.
-     * @param Cache $cache
+     * @param CacheInterface $cache
      * @param string[] $keys
      * @return array the timestamp indexed by cache keys
      */
@@ -99,7 +100,7 @@ class TagDependency extends Dependency
 
     /**
      * Returns the timestamps for the specified tags.
-     * @param Cache $cache
+     * @param CacheInterface $cache
      * @param string[] $tags
      * @return array the timestamps indexed by the specified tags.
      */

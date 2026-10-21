@@ -1,10 +1,17 @@
 <?php
+
+/**
+ * @link https://www.yiiframework.com/
+ * @copyright Copyright (c) 2008 Yii Software LLC
+ * @license https://www.yiiframework.com/license/
+ */
+
 namespace yiiunit\framework\rbac;
 
 use yii\rbac\Rule;
 
 /**
- * Checks if authorID matches userID passed via params
+ * Checks if authorID matches userID passed via params.
  */
 class AuthorRule extends Rule
 {
@@ -12,7 +19,7 @@ class AuthorRule extends Rule
     public $reallyReally = false;
 
     /**
-     * @inheritdoc
+     * {@inheritdoc}
      */
     public function execute($user, $item, $params)
     {

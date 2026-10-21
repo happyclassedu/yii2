@@ -1,13 +1,12 @@
 <?php
+
 /**
- * Yii bootstrap file.
- *
- * @link http://www.yiiframework.com/
+ * @link https://www.yiiframework.com/
  * @copyright Copyright (c) 2008 Yii Software LLC
- * @license http://www.yiiframework.com/license/
+ * @license https://www.yiiframework.com/license/
  */
 
-require(__DIR__ . '/BaseYii.php');
+require __DIR__ . '/BaseYii.php';
 
 /**
  * Yii is a helper class serving common framework functionalities.
@@ -17,11 +16,16 @@ require(__DIR__ . '/BaseYii.php');
  *
  * @author Qiang Xue <qiang.xue@gmail.com>
  * @since 2.0
+ * @phpcs:disable PSR1.Files.SideEffects.FoundWithSymbols
+ * @phpcs:disable PSR1.Classes.ClassDeclaration.MissingNamespace
+ *
+ * @template TUserIdentity of \yii\web\IdentityInterface
+ * @extends \yii\BaseYii<TUserIdentity>
  */
 class Yii extends \yii\BaseYii
 {
 }
 
 spl_autoload_register(['Yii', 'autoload'], true, true);
-Yii::$classMap = require(__DIR__ . '/classes.php');
+Yii::$classMap = require __DIR__ . '/classes.php';
 Yii::$container = new yii\di\Container();

@@ -1,8 +1,9 @@
 <?php
+
 /**
- * @link http://www.yiiframework.com/
+ * @link https://www.yiiframework.com/
  * @copyright Copyright (c) 2008 Yii Software LLC
- * @license http://www.yiiframework.com/license/
+ * @license https://www.yiiframework.com/license/
  */
 
 namespace yii\widgets;
@@ -14,7 +15,7 @@ use yii\base\Widget;
  * ContentDecorator records all output between [[begin()]] and [[end()]] calls, passes it to the given view file
  * as `$content` and then echoes rendering result.
  *
- * ```php
+ * ```
  * <?php ContentDecorator::begin([
  *     'viewFile' => '@app/views/layouts/base.php',
  *     'params' => [],
@@ -29,7 +30,7 @@ use yii\base\Widget;
  * There are [[\yii\base\View::beginContent()]] and [[\yii\base\View::endContent()]] wrapper methods in the
  * [[\yii\base\View]] component to make syntax more friendly. In the view these could be used as follows:
  *
- * ```php
+ * ```
  * <?php $this->beginContent('@app/views/layouts/base.php') ?>
  *
  * some content here
@@ -44,7 +45,7 @@ class ContentDecorator extends Widget
 {
     /**
      * @var string the view file that will be used to decorate the content enclosed by this widget.
-     * This can be specified as either the view file path or path alias.
+     * This can be specified as either the view file path or [path alias](guide:concept-aliases).
      */
     public $viewFile;
     /**
@@ -58,6 +59,8 @@ class ContentDecorator extends Widget
      */
     public function init()
     {
+        parent::init();
+
         if ($this->viewFile === null) {
             throw new InvalidConfigException('ContentDecorator::viewFile must be set.');
         }

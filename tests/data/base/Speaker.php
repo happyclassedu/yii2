@@ -1,10 +1,21 @@
 <?php
+
+/**
+ * @link https://www.yiiframework.com/
+ * @copyright Copyright (c) 2008 Yii Software LLC
+ * @license https://www.yiiframework.com/license/
+ */
+
+declare(strict_types=1);
+
 namespace yiiunit\data\base;
 
 use yii\base\Model;
 
 /**
- * Speaker
+ * Speaker.
+ *
+ * @property-read mixed $checkedValues
  */
 class Speaker extends Model
 {
@@ -40,6 +51,20 @@ class Speaker extends Model
     {
         return [
             'test' => ['firstName', 'lastName', '!underscore_style'],
+            'duplicates' => ['firstName', 'firstName', '!underscore_style', '!underscore_style'],
         ];
+    }
+
+    private $_checkedValues = [];
+
+    public function customValidatingMethod($attribute, $params, $validator, $current): void
+    {
+        $this->_checkedValues[] = $current;
+        $this->addError($attribute, 'Custom method error');
+    }
+
+    public function getCheckedValues()
+    {
+        return $this->_checkedValues;
     }
 }

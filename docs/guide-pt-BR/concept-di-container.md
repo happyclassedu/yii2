@@ -1,7 +1,7 @@
 Container de Injeção de Dependência 
 ==============================
 
-Um container de injeção de dependência (DI) é um objeto que sabe como instanciar e configurar objetos e todas as suas dependências. O [artigo do Martin](http://martinfowler.com/articles/injection.html) explica bem porque o container de DI é útil. Aqui vamos explicar principalmente a utilização do container de DI fornecido pelo Yii.
+Um container de injeção de dependência (DI) é um objeto que sabe como instanciar e configurar objetos e todas as suas dependências. O [artigo do Martin](https://martinfowler.com/articles/injection.html) explica bem porque o container de DI é útil. Aqui vamos explicar principalmente a utilização do container de DI fornecido pelo Yii.
 
 
 Injeção de Dependência <span id="dependency-injection"></span>
@@ -40,9 +40,9 @@ Ao registrar uma dependência ou ao criar um novo objeto, você pode fornecer um
 Por exemplo:
 
 ```php
-use yii\base\Object;
+use yii\base\BaseObject;
 
-class Foo extends Object
+class Foo extends BaseObject
 {
     public $bar;
 
@@ -65,7 +65,7 @@ $container->get('Foo', [], [
 ]);
 ```
 
-> Informação: O método [[yii\di\Container::get()]] recebe em seu terceiro parâmetro um array de configuração que deve ser aplicado ao objecto a ser criado. Se a classe implementa a interface [[yii\base\Configurable]] (por exemplo, [[yii\base\Object]]), o array de configuração será passado como o último parâmetro para o construtor da classe; caso contrário, a configuração será aplicada *depois* que o objeto for criado.
+> Informação: O método [[yii\di\Container::get()]] recebe em seu terceiro parâmetro um array de configuração que deve ser aplicado ao objecto a ser criado. Se a classe implementa a interface [[yii\base\Configurable]] (por exemplo, [[yii\base\BaseObject]]), o array de configuração será passado como o último parâmetro para o construtor da classe; caso contrário, a configuração será aplicada *depois* que o objeto for criado.
 
 
 ### Injeção de PHP Callable <span id="php-callable-injection"></span>
@@ -75,7 +75,7 @@ Cada vez que [[yii\di\Container::get()]] for chamado, o callable correspondente 
 O callable é responsável por resolver as dependências e injetá-las de forma adequada para os objetos recém-criados. Por exemplo:
 
 ```php
-$container->set('Foo', function () {
+$container->set('Foo', function ($container, $params, $config) {
     $foo = new Foo(new Bar);
     // ... Outras inicializações...
     return $foo;
@@ -89,7 +89,7 @@ Para ocultar a lógica complexa da construção de um novo objeto você pode usa
 ```php
 class FooBuilder
 {
-    public static function build()
+    public static function build($container, $params, $config)
     {
         return function () {
             $foo = new Foo(new Bar);
@@ -195,7 +195,7 @@ O código abaixo mostra um exemplo mais sofisticado. A classe `UserLister` depen
 ```php
 namespace app\models;
 
-use yii\base\Object;
+use yii\base\BaseObject;
 use yii\db\Connection;
 use yii\di\Container;
 
@@ -204,7 +204,7 @@ interface UserFinderInterface
     function findUser();
 }
 
-class UserFinder extends Object implements UserFinderInterface
+class UserFinder extends BaseObject implements UserFinderInterface
 {
     public $db;
 
@@ -219,7 +219,7 @@ class UserFinder extends Object implements UserFinderInterface
     }
 }
 
-class UserLister extends Object
+class UserLister extends BaseObject
 {
     public $finder;
 
@@ -317,7 +317,7 @@ Resumo <span id="summary"></span>
 -------
 
 Ambas as injeção de dependência e [service locator](concept-service-locator.md) são padrões de projetos conhecidos que permitem a construção de software com alta coesão e baixo acoplamento. É altamente recomendável que você leia o
-[Artigo do Martin](http://martinfowler.com/articles/injection.html) para obter uma compreensão mais profunda da injeção de dependência e service locator.
+[Artigo do Martin](https://martinfowler.com/articles/injection.html) para obter uma compreensão mais profunda da injeção de dependência e service locator.
 
 O Yii implementa o [service locator](concept-service-locator.md) no topo da injeção dependência container (DI).
 Quando um service locator tenta criar uma nova instância de objeto, ele irá encaminhar a chamada para o container de DI.

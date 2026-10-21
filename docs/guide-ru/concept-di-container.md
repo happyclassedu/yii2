@@ -2,7 +2,7 @@
 ==============================
 
 Контейнер внедрения зависимостей — это объект, который знает, как создать и настроить экземпляр класса и зависимых от него объектов.
-[Статья Мартина Фаулера](http://martinfowler.com/articles/injection.html) хорошо объясняет, почему контейнер внедрения зависимостей является полезным. Здесь, преимущественно, будет объясняться использование контейнера внедрения зависимостей, предоставляемого в Yii.
+[Статья Мартина Фаулера](https://martinfowler.com/articles/injection.html) хорошо объясняет, почему контейнер внедрения зависимостей является полезным. Здесь, преимущественно, будет объясняться использование контейнера внедрения зависимостей, предоставляемого в Yii.
 
 
 Внедрение зависимостей <span id="dependency-injection"></span>
@@ -60,7 +60,7 @@ class MyClass extends \yii\base\Component
 }
 ```
 
-Метод можно вызвать либо передав экземпляр `\my\heavy\Dependency` самостоятельно, либо использовава
+Метод можно вызвать либо передав экземпляр `\my\heavy\Dependency` самостоятельно, либо использовав
 [[yii\di\Container::invoke()]]:
 
 ```php
@@ -76,9 +76,9 @@ Yii::$container->invoke([$obj, 'doSomething'], ['param1' => 42]); // $something 
 Например,
 
 ```php
-use yii\base\Object;
+use yii\base\BaseObject;
 
-class Foo extends Object
+class Foo extends BaseObject
 {
     public $bar;
 
@@ -101,7 +101,7 @@ $container->get('Foo', [], [
 ]);
 ```
 
-> Info: Метод [[yii\di\Container::get()]] третьим аргументом принимает массив конфигурации, которым инициализируется создаваемый объект. Если класс реализует интерфейс [[yii\base\Configurable]] (например, [[yii\base\Object]]), то массив конфигурации передается в последний параметр конструктора класса. Иначе конфигурация применяется уже *после* создания объекта.
+> Info: Метод [[yii\di\Container::get()]] третьим аргументом принимает массив конфигурации, которым инициализируется создаваемый объект. Если класс реализует интерфейс [[yii\base\Configurable]] (например, [[yii\base\BaseObject]]), то массив конфигурации передается в последний параметр конструктора класса. Иначе конфигурация применяется уже *после* создания объекта.
 
 
 Более сложное практическое применение <span id="advanced-practical-usage"></span>
@@ -110,21 +110,21 @@ $container->get('Foo', [], [
 Допустим, мы работаем над API и у нас есть:
 
 - `app\components\Request`, наследуемый от `yii\web\Request` и реализующий дополнительные возможности.
-- `app\components\Response`, наследуемый от `yii\web\Response` с свойством `format`, по умолчанию инициализируемом как `json`.
+- `app\components\Response`, наследуемый от `yii\web\Response` со свойством `format`, по умолчанию инициализируемом как `json`.
 - `app\storage\FileStorage` и `app\storage\DocumentsReader`, где реализована некая логика для работы с документами в
   неком файловом хранилище:
   
   ```php
   class FileStorage
   {
-      public function __contruct($root) {
+      public function __construct($root) {
           // делаем что-то
       }
   }
   
   class DocumentsReader
   {
-      public function __contruct(FileStorage $fs) {
+      public function __construct(FileStorage $fs) {
           // делаем что-то
       }
   }
@@ -151,13 +151,13 @@ $container->setDefinitions([
         'class' => 'app\components\Response',
         'format' => 'json'
     ],
-    'app\storage\DocumentsReader' => function () {
+    'app\storage\DocumentsReader' => function ($container, $params, $config) {
         $fs = new app\storage\FileStorage('/var/tempfiles');
         return new app\storage\DocumentsReader($fs);
     }
 ]);
 
-$reader = $container->get('app\storage\DocumentsReader); 
+$reader = $container->get('app\storage\DocumentsReader');
 // Создаст объект DocumentReader со всеми зависимостями 
 ```
 
@@ -194,19 +194,19 @@ $container->setDefinitions([
     ]
 ]);
 
-$reader = $container->get('app\storage\DocumentsReader); 
+$reader = $container->get('app\storage\DocumentsReader'); 
 // Код будет работать ровно так же, как и в предыдущем примере.
 ```
 
 Вы могли заметить вызов `Instance::of('tempFileStorage')`. Он означает, что [[yii\di\Container|Container]]
-наявно предоставит зависимость, зарегистрированную с именем `tempFileStorage` и передаст её первым аргументом 
+неявно предоставит зависимость, зарегистрированную с именем `tempFileStorage` и передаст её первым аргументом 
 в конструктор `app\storage\DocumentsWriter`.
 
 > Note: Методы [[yii\di\Container::setDefinitions()|setDefinitions()]] и [[yii\di\Container::setSingletons()|setSingletons()]]
   доступны с версии 2.0.11.
   
 Ещё один шаг по оптимизации конфигурации — регистрировать некоторые зависимости как синглтоны. Зависимость, регистрируемая 
-через метод [[yii\di\Container::set()|set()]] будет созаваться каждый раз при обращении к ней. Некоторые классы не меняют
+через метод [[yii\di\Container::set()|set()]], будет создаваться каждый раз при обращении к ней. Некоторые классы не меняют
 своего состояния на протяжении всей работы приложения, поэтому могут быть зарегистрированы как синглтоны. Это увеличит
 производительность приложения. 
 
@@ -243,7 +243,7 @@ $reader = $container->get('app\storage\DocumentsReader');
 Callback отвечает за разрешения зависимостей и внедряет их в соответствии с вновь создаваемыми объектами. Например,
 
 ```php
-$container->set('Foo', function () {
+$container->set('Foo', function ($container, $params, $config) {
     $foo = new Foo(new Bar);
     // ... дополнительная инициализация
     return $foo;
@@ -258,7 +258,7 @@ callable:
 ```php
 class FooBuilder
 {
-    public static function build()
+    public static function build($container, $params, $config)
     {
         $foo = new Foo(new Bar);
         // ... дополнительная инициализация ...
@@ -283,7 +283,7 @@ $foo = $container->get('Foo');
 ```php
 $container = new \yii\di\Container;
 
-// регистрация имени класса, как есть. это может быть пропущено.
+// регистрация имени класса, как есть. Это может быть пропущено.
 $container->set('yii\db\Connection');
 
 // регистрация интерфейса
@@ -295,7 +295,7 @@ $container->set('yii\mail\MailInterface', 'yii\swiftmailer\Mailer');
 // для создания экземпляра Connection
 $container->set('foo', 'yii\db\Connection');
 
-// Регистрация класса с конфигурацией. Конфигурация
+// регистрация класса с конфигурацией. Конфигурация
 // будет применена при создании экземпляра класса через get()
 $container->set('yii\db\Connection', [
     'dsn' => 'mysql:host=127.0.0.1;dbname=demo',
@@ -358,8 +358,11 @@ $container->setSingleton('yii\db\Connection', [
 // "db" ранее зарегистрированный псевдоним
 $db = $container->get('db');
 
-// эквивалентно: $engine = new \app\components\SearchEngine($apiKey, ['type' => 1]);
-$engine = $container->get('app\components\SearchEngine', [$apiKey], ['type' => 1]);
+// эквивалентно: $engine = new \app\components\SearchEngine($apiKey, $apiSecret, ['type' => 1]);
+$engine = $container->get('app\components\SearchEngine', [$apiKey, $apiSecret], ['type' => 1]);
+
+// эквивалентно: $api = new \app\components\Api($host, $apiKey);
+$api = $container->get('app\components\Api', ['host' => $host, 'apiKey' => $apiKey]);
 ```
 
 За кулисами, контейнер внедрения зависимостей делает гораздо больше работы, чем просто создание нового объекта.
@@ -375,7 +378,7 @@ $engine = $container->get('app\components\SearchEngine', [$apiKey], ['type' => 1
 ```php
 namespace app\models;
 
-use yii\base\Object;
+use yii\base\BaseObject;
 use yii\db\Connection;
 use yii\di\Container;
 
@@ -384,7 +387,7 @@ interface UserFinderInterface
     function findUser();
 }
 
-class UserFinder extends Object implements UserFinderInterface
+class UserFinder extends BaseObject implements UserFinderInterface
 {
     public $db;
 
@@ -399,7 +402,7 @@ class UserFinder extends Object implements UserFinderInterface
     }
 }
 
-class UserLister extends Object
+class UserLister extends BaseObject
 {
     public $finder;
 
@@ -445,13 +448,13 @@ Yii создаёт контейнер внедрения зависимосте�
 \Yii::$container->set('yii\widgets\LinkPager', ['maxButtonCount' => 5]);
 ```
 
-Теперь, если вы вызовете в представлении виджет, используя следующий код, то свойство `maxButtonCount` будет инициализировано, как 5, вместо значения по умолчанию 10, как это определено в классе.
+Теперь, если вы вызовете в представлении виджет, используя следующий код, то свойство `maxButtonCount` будет инициализировано как 5 вместо значения по умолчанию 10, как это определено в классе.
 
 ```php
 echo \yii\widgets\LinkPager::widget();
 ```
 
-Хотя, вы всё ещё можете переопределить установленное значение через контейнер внедрения зависимостей:
+Хотя вы всё ещё можете переопределить установленное значение через контейнер внедрения зависимостей:
 
 ```php
 echo \yii\widgets\LinkPager::widget(['maxButtonCount' => 20]);
@@ -495,7 +498,7 @@ class HotelController extends Controller
 как можно раньше. Ниже приведены рекомендуемые практики:
 
 * Если вы разработчик приложения, то вы можете зарегистрировать зависимости в конфигурации вашего приложения.
-  Как это сделать описано в подразделе [Конфигурация приложения](concept-service-locator.md#application-configurations) 
+  Как это сделать описано в подразделе [Конфигурация приложения](concept-configurations.md#application-configurations) 
   раздела [Конфигурации](concept-configurations.md).
 * Если вы разработчик распространяемого [расширения](structure-extensions.md), то вы можете зарегистрировать зависимости
   в загрузочном классе расширения.
@@ -506,7 +509,7 @@ class HotelController extends Controller
 Как dependency injection, так и [service locator](concept-service-locator.md) являются популярными паттернами проектирования, которые позволяют 
 создавать программное обеспечение в слабосвязанной и более тестируемой манере.
 Мы настоятельно рекомендуем к прочтению
-[статью Мартина Фаулера](http://martinfowler.com/articles/injection.html), для более глубокого понимания dependency injection и service locator. 
+[статью Мартина Фаулера](https://martinfowler.com/articles/injection.html), для более глубокого понимания dependency injection и service locator. 
 
 Yii реализует свой [service locator](concept-service-locator.md) поверх контейнера внедрения зависимостей.
 Когда service locator пытается создать новый экземпляр объекта, он перенаправляет вызов на контейнер внедрения зависимостей.

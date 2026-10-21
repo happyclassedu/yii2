@@ -1,8 +1,9 @@
 <?php
+
 /**
- * @link http://www.yiiframework.com/
+ * @link https://www.yiiframework.com/
  * @copyright Copyright (c) 2008 Yii Software LLC
- * @license http://www.yiiframework.com/license/
+ * @license https://www.yiiframework.com/license/
  */
 
 namespace yii\rbac;
@@ -60,7 +61,7 @@ interface ManagerInterface extends CheckAccessInterface
     /**
      * Returns the named role.
      * @param string $name the role name.
-     * @return null|Role the role corresponding to the specified name. Null is returned if no such role.
+     * @return Role|null the role corresponding to the specified name. Null is returned if no such role.
      */
     public function getRole($name);
 
@@ -91,7 +92,7 @@ interface ManagerInterface extends CheckAccessInterface
     /**
      * Returns the named permission.
      * @param string $name the permission name.
-     * @return null|Permission the permission corresponding to the specified name. Null is returned if no such permission.
+     * @return Permission|null the permission corresponding to the specified name. Null is returned if no such permission.
      */
     public function getPermission($name);
 
@@ -118,7 +119,7 @@ interface ManagerInterface extends CheckAccessInterface
     /**
      * Returns the rule of the specified name.
      * @param string $name the rule name
-     * @return null|Rule the rule object, or null if the specified name does not correspond to a rule.
+     * @return Rule|null the rule object, or null if the specified name does not correspond to a rule.
      */
     public function getRule($name);
 
@@ -129,7 +130,7 @@ interface ManagerInterface extends CheckAccessInterface
     public function getRules();
 
     /**
-     * Checks the possibility of adding a child to parent
+     * Checks the possibility of adding a child to parent.
      * @param Item $parent the parent item
      * @param Item $child the child item to be added to the hierarchy
      * @return bool possibility of adding
@@ -182,7 +183,7 @@ interface ManagerInterface extends CheckAccessInterface
     /**
      * Assigns a role to a user.
      *
-     * @param Role $role
+     * @param Role|Permission $role
      * @param string|int $userId the user ID (see [[\yii\web\User::id]])
      * @return Assignment the role assignment information.
      * @throws \Exception if the role has already been assigned to the user
@@ -191,7 +192,7 @@ interface ManagerInterface extends CheckAccessInterface
 
     /**
      * Revokes a role from a user.
-     * @param Role $role
+     * @param Role|Permission $role
      * @param string|int $userId the user ID (see [[\yii\web\User::id]])
      * @return bool whether the revoking is successful
      */
@@ -208,7 +209,7 @@ interface ManagerInterface extends CheckAccessInterface
      * Returns the assignment information regarding a role and a user.
      * @param string $roleName the role name
      * @param string|int $userId the user ID (see [[\yii\web\User::id]])
-     * @return null|Assignment the assignment information. Null is returned if
+     * @return Assignment|null the assignment information. Null is returned if
      * the role is not assigned to the user.
      */
     public function getAssignment($roleName, $userId);

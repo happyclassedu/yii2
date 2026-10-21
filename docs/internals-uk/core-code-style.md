@@ -7,8 +7,7 @@
 
 Ви можете отримати конфігурацію для CodeSniffer за посиланням: https://github.com/yiisoft/yii2-coding-standards
 
-1. Загальні положення
----------------------
+## 1. Загальні положення
 
 В основному командою розробників використовується стиль сумісний з [PSR-2](https://github.com/php-fig/fig-standards/blob/master/accepted/PSR-2-coding-style-guide.md),
 тому все, що стосується
@@ -25,8 +24,7 @@
 - Імена приватних властивостей ПОВИННІ починатись з підкреслення.
 - Завжди використовуйте `elseif` замість `else if`.
 
-2. Файли
---------
+## 2. Файли
 
 ### 2.1. Теги PHP
 
@@ -39,13 +37,11 @@
 
 PHP код ПОВИНЕН використовувати лише UTF-8 без BOM.
 
-3. Імена класів
----------------
+## 3. Імена класів
 
 Імена класів ПОВИННІ оголошуватись як `StudlyCaps`. Наприклад: `Controller`, `Model`.
 
-4. Класи
---------
+## 4. Класи
 
 Тут термін "клас" відноситься до всіх класів та інтерфейсів.
 
@@ -61,7 +57,7 @@ PHP код ПОВИНЕН використовувати лише UTF-8 без B
 /**
  * Документація
  */
-class MyClass extends \yii\Object implements MyInterface
+class MyClass extends \yii\base\BaseObject implements MyInterface
 {
     // код
 }
@@ -255,7 +251,7 @@ if (!$model && null === $event)
 ```
 
 Краще уникайте використання `else` після `return`, де це має сенс.
-Використовуйте [вартові умови](http://refactoring.com/catalog/replaceNestedConditionalWithGuardClauses.html).
+Використовуйте [вартові умови](https://refactoring.com/catalog/replaceNestedConditionalWithGuardClauses.html).
 
 ```php
 $result = $this->getResult();
@@ -336,42 +332,20 @@ $mul = array_reduce($numbers, function($r, $x) use($n) {
 Документація
 ------------
 
-- Див. [PHPDoc](http://phpdoc.org/) для довідки про синтаксис документації.
+- Див. [PHPDoc](https://phpdoc.org/) для довідки про синтаксис документації.
 - Код без документації не допускається.
 - Усі файли класів повинні містити файловий ("file-level") doc-блок на початку
   та класовий ("class-level") doc-блок безпосередньо над кожним класом.
 - Нема потреби використовувати `@return`, якщо метод нічого не повертає.
-- Усі віртуальні властивості у класах успадкованих від `yii\base\Object`
-  документуються з тегом `@property` у класовому doc-блоці.
-  Ці анотації генеруються автоматично із тегів `@return` чи `@param`
-  відповідних геттерів або сеттерів виконанням команди `./build php-doc` у директорії build.
-  Ви можете додати тег `@property`
-  до геттеру або сеттеру, щоб точно визначити повідомлення для документації властивості,
-  яка представляється цими методами, коли опис відрізняється від того, що встановлено
-  тегом `@return`. Наприклад:
-
-  ```php
-    <?php
-    /**
-     * Returns the errors for all attributes or a single attribute.
-     * @param string $attribute attribute name. Use `null` to retrieve errors for all attributes.
-     * @property array An array of errors for all attributes. Empty array is returned if no error.
-     * The result is a two-dimensional array. See [[getErrors()]] for detailed description.
-     * @return array errors for all attributes or the specified attribute. Empty array is returned if no error.
-     * Note that when returning errors for all attributes, the result is a two-dimensional array, like the following:
-     * ...
-     */
-    public function getErrors($attribute = null)
-  ```
 
 #### Файл
 
 ```php
 <?php
 /**
- * @link http://www.yiiframework.com/
+ * @link https://www.yiiframework.com/
  * @copyright Copyright (c) 2008 Yii Software LLC
- * @license http://www.yiiframework.com/license/
+ * @license https://www.yiiframework.com/license/
  */
 ```
 
@@ -386,7 +360,7 @@ $mul = array_reduce($numbers, function($r, $x) use($n) {
  * @author Qiang Xue <qiang.xue@gmail.com>
  * @since 2.0
  */
-class Component extends \yii\base\Object
+class Component extends \yii\base\BaseObject
 ```
 
 

@@ -3,8 +3,8 @@ Git proces rada za Yii 2 saradnike
 
 Želite da doprinesete Yii razvoju? Divno! Kako bi povećali šanse da vaše izmene budu prihvaćene što pre, molimo da 
 ispratite sledeće korake. Ako ste novi sa Git-om
-i GitHub-om, možda bi želeli da prvo pogledate [GitHub pomoć](http://help.github.com/), [probate Git](https://try.github.com)
-ili naučite nešto novo o [Git internom modelu podataka](http://nfarina.com/post/9868516270/git-is-simpler).
+i GitHub-om, možda bi želeli da prvo pogledate [GitHub pomoć](https://help.github.com/), [probate Git](https://try.github.com)
+ili naučite nešto novo o [Git internom modelu podataka](https://nfarina.com/post/9868516270/git-is-simpler).
 
 Pripremite vaše razvojno okruženje
 ------------------------------------
@@ -12,21 +12,21 @@ Pripremite vaše razvojno okruženje
 Sledeći koraci će napraviti razvojno okruženje za Yii, koje možete koristiti kako bi radili
 na baznom kodu Yii frejmvorka. Ovi se koraci trebaju uraditi samo jednom.
 
-### 1. [Forkujte](http://help.github.com/fork-a-repo/) Yii repozitorijum na GitHub-u i klonirajte vaš fork na vašem razvojnom okruženju
+### 1. [Forkujte](https://help.github.com/fork-a-repo/) Yii repozitorijum na GitHub-u i klonirajte vaš fork na vašem razvojnom okruženju
 
 ```
 git clone git@github.com:VASE-GITHUB-KORISNICKO-IME/yii2.git
 ```
 
 Ako imate problema sa podešavanjem Git-a sa GitHub-om na Linux-u ili dobijate greške tipa "Permission Denied (publickey)",
-onda morate [podesiti vašu Git instalaciju da radi sa GitHub-om](http://help.github.com/linux-set-up-git/)
+onda morate [podesiti vašu Git instalaciju da radi sa GitHub-om](https://help.github.com/linux-set-up-git/)
 
 ### 2. Dodajte glavni Yii repozitorijum kao dodatni git repozitorijum sa nazivom "upstream"
 
 Locirajte se u direktorijum gde ste klonirali Yii, podrazumevano, "yii2" direktorijum. Nakon toga izvršite sledeću komandu:
 
 ```
-git remote add upstream git://github.com/yiisoft/yii2.git
+git remote add upstream https://github.com/yiisoft/yii2.git
 ```
 
 ### 3. Pripremite okruženje za testiranje
@@ -121,7 +121,7 @@ Za veoma male izmene, na primer, greške u tekstu, izmene na dokumentaciji, nije
 
 ### 6. Komitujte promene
 
-dodajte fajlove/promene koje želite da [komitujete](http://gitref.org/basic/#add) sa
+dodajte fajlove/promene koje želite da [komitujete](https://git.github.io/git-reference/basic/#add) sa
 
 ```
 git add path/to/my/file.php
@@ -151,7 +151,7 @@ git push -u origin 999-IME-VASE-GRANE
 
 Parametar `-u` će osigurati da će vaša grana moći da šalje pull i push zahteve sa GitHub grane. To znači da ako pozovete `git push` sledeći put će znati gde treba kod da se pošalje. Ovo je korisno ako budete hteli da kasnije dodate više komitova u jednom pull zahtevu.
 
-### 9. Otvorite [pull zahtev](http://help.github.com/send-pull-requests/) na upstream-u.
+### 9. Otvorite [pull zahtev](https://help.github.com/articles/creating-a-pull-request-from-a-fork/) na upstream-u.
 
 Posetite vaš repozitorijum na Github-u i kliknite na "Pull Request", izaberite vašu granu na desnoj strani i unesite neki opis u polje za komentar. Kako bi povezali pull zahtev sa temom unesite bilo gde u komentaru `#999` gde 999 je broj teme.
 
@@ -173,8 +173,8 @@ git push origin --delete 999-IME-VASE-GRANE
 
 ### Napomena:
 
-Kako bi rano otkrili regresije u Yii kodu prilikom svake integracije na GitHub-u pokreće se [Travis CI](http://travis-ci.org) kako bi se radilo testiranje. Pošto Yii tim ne želi da preoptereti ovaj servis,
-[`[ci skip]`](http://about.travis-ci.org/docs/user/how-to-skip-a-build/) će biti uključen prilikom svake integracije ako pull zahtev:
+Kako bi rano otkrili regresije u Yii kodu prilikom svake integracije na GitHub-u pokreće se [Travis CI](https://travis-ci.com) kako bi se radilo testiranje. Pošto Yii tim ne želi da preoptereti ovaj servis,
+[`[ci skip]`](https://docs.travis-ci.com/user/customizing-the-build/#Skipping-a-build) će biti uključen prilikom svake integracije ako pull zahtev:
 
 * utiče samo na javascript, css i slike,
 * osvežava dokumentaciju,
@@ -186,7 +186,7 @@ Na ovaj način će Travis započinjati testiranje samo izmena koje nisu prvenstv
 
 ```
 git clone git@github.com:VASE-GITHUB-KORISNICKO-IME/yii2.git
-git remote add upstream git://github.com/yiisoft/yii2.git
+git remote add upstream https://github.com/yiisoft/yii2.git
 ```
 
 ```

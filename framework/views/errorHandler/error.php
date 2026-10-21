@@ -1,6 +1,9 @@
 <?php
-/* @var $exception \yii\web\HttpException|\Exception */
-/* @var $handler \yii\web\ErrorHandler */
+/**
+ * @var \yii\web\View $this
+ * @var \Throwable $exception
+ * @var \yii\web\ErrorHandler $handler
+ */
 if ($exception instanceof \yii\web\HttpException) {
     $code = $exception->statusCode;
 } else {
@@ -78,16 +81,13 @@ if (method_exists($this, 'beginPage')) {
         Please contact us if you think this is a server error. Thank you.
     </p>
     <div class="version">
-        <?= date('Y-m-d H:i:s', time()) ?>
+        <?= date('Y-m-d H:i:s') ?>
     </div>
-    <?php
-    if (method_exists($this, 'endBody')) {
-        $this->endBody(); // to allow injecting code into body (mostly by Yii Debug Toolbar)
-    }
-    ?>
+    <?php if (method_exists($this, 'endBody')): ?>
+        <?php $this->endBody() // to allow injecting code into body (mostly by Yii Debug Toolbar)?>
+    <?php endif ?>
 </body>
 </html>
-<?php
-if (method_exists($this, 'endPage')) {
-    $this->endPage();
-}
+<?php if (method_exists($this, 'endPage')): ?>
+    <?php $this->endPage() ?>
+<?php endif ?>

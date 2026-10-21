@@ -8,7 +8,8 @@ In particular, Yii supports the following features about RESTful APIs:
 * Response format negotiation (supporting JSON and XML by default);
 * Customizable object serialization with support for selectable output fields;
 * Proper formatting of collection data and validation errors;
-* Support for [HATEOAS](http://en.wikipedia.org/wiki/HATEOAS);
+* Collection pagination, filtering and sorting;
+* Support for [HATEOAS](https://en.wikipedia.org/wiki/HATEOAS);
 * Efficient routing with proper HTTP verb check;
 * Built-in support for the `OPTIONS` and `HEAD` verbs;
 * Authentication and authorization;
@@ -161,7 +162,9 @@ Content-Type: application/xml
 The following command will create a new user by sending a POST request with the user data in JSON format:
 
 ```
-$ curl -i -H "Accept:application/json" -H "Content-Type:application/json" -XPOST "http://localhost/users" -d '{"username": "example", "email": "user@example.com"}'
+$ curl -i -H "Accept:application/json" -H "Content-Type:application/json" \
+    -XPOST "http://localhost/users" \
+    -d '{"username": "example", "email": "user@example.com"}'
 
 HTTP/1.1 201 Created
 ...
@@ -185,8 +188,49 @@ For example, the URL `http://localhost/users?fields=id,email` will only return t
 
 > Info: You may have noticed that the result of `http://localhost/users` includes some sensitive fields,
 > such as `password_hash`, `auth_key`. You certainly do not want these to appear in your API result.
-> You can and should filter out these fields as described in the [Resources](rest-resources.md) section.
+> You can and should remove these fields from result as described in the [Resources](rest-resources.md) section.
 
+Additionally, you can sort collections like `http://localhost/users?sort=email` or
+`http://localhost/users?sort=-email`. Filtering collections like `http://localhost/users?filter[id]=10` or
+`http://localhost/users?filter[email][like]=gmail.com` could be implemented using
+data filters. See [Filtering Collections](rest-filtering-collections.md) section for details.
+
+## Customizing Pagination and Sorting in the list<span id="customizing-pagination-and-sorting"></span>
+
+In order to change the default [pagination](output-pagination.md) and [sorting](output-sorting.md) of the model list
+you can configure the [[yii\rest\IndexAction]] in your controller. For example:
+
+```php
+<?php
+namespace app\controllers;
+
+use yii\rest\ActiveController;
+use yii\helpers\ArrayHelper;
+
+class UserController extends ActiveController
+{
+    public $modelClass = 'app\models\User';
+    
+    public function actions()
+    {
+        return ArrayHelper::merge(parent::actions(), [
+            'index' => [
+                'pagination' => [
+                    'pageSize' => 10,
+                ],
+                'sort' => [
+                    'defaultOrder' => [
+                        'created_at' => SORT_DESC,
+                    ],
+                ],
+            ],
+        ]);
+    }
+}
+```
+
+Please see [Extending ActiveController](rest-controllers#extending-active-controller) for more information on how to 
+configure actions of the ActiveController.
 
 ## Summary <span id="summary"></span>
 

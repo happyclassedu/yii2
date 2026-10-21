@@ -5,10 +5,10 @@ The following code style is used for Yii 2.x core and official extensions develo
 into the core, consider using it. We aren't forcing you to use this code style for your application. Feel free to choose
 what suits you better.
 
-You can get a config for CodeSniffer here: https://github.com/yiisoft/yii2-coding-standards
+Code style is checked with [PHP-CS-Fixer](https://github.com/PHP-CS-Fixer/PHP-CS-Fixer) using `.php-cs-fixer.dist.php`.
+Run `composer cs` to check the code style and `composer cs-fix` to apply fixes.
 
-1. Overview
------------
+## 1. Overview
 
 Overall we're using [PSR-2](https://github.com/php-fig/fig-standards/blob/master/accepted/PSR-2-coding-style-guide.md)
 compatible style so everything that applies to
@@ -26,8 +26,7 @@ style as well.
 - Property names MUST start with an initial underscore if they are private.
 - Always use `elseif` instead of `else if`.
 
-2. Files
---------
+## 2. Files
 
 ### 2.1. PHP Tags
 
@@ -40,17 +39,15 @@ style as well.
 
 PHP code MUST use only UTF-8 without BOM.
 
-3. Class Names
---------------
+## 3. Class Names
 
 Class names MUST be declared in `StudlyCaps`. For example, `Controller`, `Model`.
 
-4. Classes
-----------
+## 4. Classes
 
 The term "class" refers to all classes and interfaces here.
 
-- Classes should be named using `CamelCase`.
+- Classes should be named using `StudlyCase`.
 - The brace should always be written on the line underneath the class name.
 - Every class must have a documentation block that conforms to the PHPDoc.
 - All code in a class must be indented with 4 spaces.
@@ -62,7 +59,7 @@ The term "class" refers to all classes and interfaces here.
 /**
  * Documentation
  */
-class MyClass extends \yii\Object implements MyInterface
+class MyClass extends \yii\base\BaseObject implements MyInterface
 {
     // code
 }
@@ -156,7 +153,7 @@ class Foo
  * Checks whether the IP is in subnet range
  *
  * @param string $ip an IPv4 or IPv6 address
- * @param int $cidr the CIDR lendth
+ * @param int $cidr the CIDR length
  * @param string $range subnet in CIDR format e.g. `10.0.0.0/8` or `2001:af::/64`
  * @return bool whether the IP is in subnet range
  */
@@ -285,7 +282,7 @@ if (!$model && null === $event)
 ```
 
 Prefer avoiding `else` after `return` where it makes sense.
-Use [guard conditions](http://refactoring.com/catalog/replaceNestedConditionalWithGuardClauses.html).
+Use [guard conditions](https://refactoring.com/catalog/replaceNestedConditionalWithGuardClauses.html).
 
 ```php
 $result = $this->getResult();
@@ -366,42 +363,20 @@ $mul = array_reduce($numbers, function($r, $x) use($n) {
 Documentation
 -------------
 
-- Refer to [phpDoc](http://phpdoc.org/) for documentation syntax.
+- Refer to [phpDoc](https://phpdoc.org/) for documentation syntax.
 - Code without documentation is not allowed.
 - All class files must contain a "file-level" docblock at the top of each file
   and a "class-level" docblock immediately above each class.
 - There is no need to use `@return` if method does return nothing.
-- All virtual properties in classes that extend from `yii\base\Object`
-  are documented with an `@property` tag in the class doc block.
-  These annotations are automatically generated from the `@return` or `@param`
-  tag in the corresponding getter or setter by running `./build php-doc` in the build directory.
-  You may add an `@property` tag
-  to the getter or setter to explicitly give a documentation message for the property
-  introduced by these methods when description differs from what is stated
-  in `@return`. Here is an example:
-
-  ```php
-    <?php
-    /**
-     * Returns the errors for all attribute or a single attribute.
-     * @param string $attribute attribute name. Use null to retrieve errors for all attributes.
-     * @property array An array of errors for all attributes. Empty array is returned if no error.
-     * The result is a two-dimensional array. See [[getErrors()]] for detailed description.
-     * @return array errors for all attributes or the specified attribute. Empty array is returned if no error.
-     * Note that when returning errors for all attributes, the result is a two-dimensional array, like the following:
-     * ...
-     */
-    public function getErrors($attribute = null)
-  ```
 
 #### File
 
 ```php
 <?php
 /**
- * @link http://www.yiiframework.com/
+ * @link https://www.yiiframework.com/
  * @copyright Copyright (c) 2008 Yii Software LLC
- * @license http://www.yiiframework.com/license/
+ * @license https://www.yiiframework.com/license/
  */
 ```
 
@@ -416,7 +391,7 @@ Documentation
  * @author Qiang Xue <qiang.xue@gmail.com>
  * @since 2.0
  */
-class Component extends \yii\base\Object
+class Component extends \yii\base\BaseObject
 ```
 
 
@@ -470,6 +445,35 @@ It is also possible to link to the Guide using the following syntax:
 ```markdown
 [link to guide](guide:file-name.md)
 [link to guide](guide:file-name.md#subsection)
+```
+
+##### Code examples
+
+Code examples should use Markdown syntax, but they should not specify the language.
+Specifying a language in code examples may break their display in some IDEs. Here is an example:
+
+```php
+/**
+ * Correct code example:
+ * 
+ * ```
+ * $object->doMagic();
+ * ```
+ */
+function doMagic()
+{
+}
+
+/**
+ * Incorrect code example:
+ * 
+ * ```php
+ * $object->doMagic();
+ * ```
+ */
+function doMagic()
+{
+}
 ```
 
 

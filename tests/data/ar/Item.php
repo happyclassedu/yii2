@@ -1,13 +1,21 @@
 <?php
 
+/**
+ * @link https://www.yiiframework.com/
+ * @copyright Copyright (c) 2008 Yii Software LLC
+ * @license https://www.yiiframework.com/license/
+ */
+
 namespace yiiunit\data\ar;
 
 /**
- * Class Item
+ * Class Item.
  *
  * @property int $id
  * @property string $name
  * @property int $category_id
+ *
+ * @property-read Category $category
  */
 class Item extends ActiveRecord
 {
@@ -18,6 +26,6 @@ class Item extends ActiveRecord
 
     public function getCategory()
     {
-        return $this->hasOne(Category::className(), ['id' => 'category_id']);
+        return $this->hasOne(Category::class, ['id' => 'category_id']);
     }
 }

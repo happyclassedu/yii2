@@ -1,9 +1,22 @@
 <?php
+
+/**
+ * @link https://www.yiiframework.com/
+ * @copyright Copyright (c) 2008 Yii Software LLC
+ * @license https://www.yiiframework.com/license/
+ */
+
 namespace yiiunit\framework\log;
 
+use yii\console\Application;
+use yii\console\Controller;
+use yii\base\InvalidParamException;
+use yii\db\Exception;
+use yii\base\InvalidConfigException;
 use Yii;
 use yii\db\Connection;
 use yii\db\Query;
+use yii\log\DbTarget;
 use yii\log\Logger;
 use yiiunit\framework\console\controllers\EchoMigrateController;
 use yiiunit\TestCase;
@@ -27,17 +40,17 @@ abstract class DbTargetTest extends TestCase
     protected static function runConsoleAction($route, $params = [])
     {
         if (Yii::$app === null) {
-            new \yii\console\Application([
+            new Application([
                 'id' => 'Migrator',
                 'basePath' => '@yiiunit',
                 'controllerMap' => [
-                    'migrate' => EchoMigrateController::className(),
+                    'migrate' => EchoMigrateController::class,
                 ],
                 'components' => [
                     'db' => static::getConnection(),
                     'log' => [
                         'targets' => [
-                            [
+                            'db' => [
                                 'class' => 'yii\log\DbTarget',
                                 'levels' => ['warning'],
                                 'logTable' => self::$logTable,
@@ -50,17 +63,17 @@ abstract class DbTargetTest extends TestCase
 
         ob_start();
         $result = Yii::$app->runAction($route, $params);
-        echo "Result is " . $result;
-        if ($result !== \yii\console\Controller::EXIT_CODE_NORMAL) {
+        echo 'Result is ' . $result;
+        if ($result !== Controller::EXIT_CODE_NORMAL) {
             ob_end_flush();
         } else {
             ob_end_clean();
         }
     }
 
-    public static function setUpBeforeClass()
+    protected function setUp(): void
     {
-        parent::setUpBeforeClass();
+        parent::setUp();
         $databases = static::getParam('databases');
         static::$database = $databases[static::$driverName];
         $pdo_database = 'pdo_' . static::$driverName;
@@ -72,32 +85,26 @@ abstract class DbTargetTest extends TestCase
         static::runConsoleAction('migrate/up', ['migrationPath' => '@yii/log/migrations/', 'interactive' => false]);
     }
 
-    public static function tearDownAfterClass()
+    protected function tearDown(): void
     {
+        self::getConnection()->createCommand()->truncateTable(self::$logTable)->execute();
         static::runConsoleAction('migrate/down', ['migrationPath' => '@yii/log/migrations/', 'interactive' => false]);
         if (static::$db) {
             static::$db->close();
         }
-        Yii::$app = null;
-        parent::tearDownAfterClass();
-    }
-
-    protected function tearDown()
-    {
         parent::tearDown();
-        self::getConnection()->createCommand()->truncateTable(self::$logTable)->execute();
     }
 
     /**
-     * @throws \yii\base\InvalidParamException
-     * @throws \yii\db\Exception
-     * @throws \yii\base\InvalidConfigException
-     * @return \yii\db\Connection
+     * @throws InvalidParamException
+     * @throws Exception
+     * @throws InvalidConfigException
+     * @return Connection
      */
     public static function getConnection()
     {
         if (static::$db == null) {
-            $db = new Connection;
+            $db = new Connection();
             $db->dsn = static::$database['dsn'];
             if (isset(static::$database['username'])) {
                 $db->username = static::$database['username'];
@@ -111,14 +118,15 @@ abstract class DbTargetTest extends TestCase
             }
             static::$db = $db;
         }
+
         return static::$db;
     }
 
     /**
-     * Tests that precision isn't lost for log timestamps
+     * Tests that precision isn't lost for log timestamps.
      * @see https://github.com/yiisoft/yii2/issues/7384
      */
-    public function testTimestamp()
+    public function testTimestamp(): void
     {
         $logger = Yii::getLogger();
 
@@ -130,7 +138,7 @@ abstract class DbTargetTest extends TestCase
             Logger::LEVEL_WARNING,
             'test',
             $time,
-            []
+            [],
         ];
 
         $logger->messages[] = $messsageData;
@@ -139,5 +147,38 @@ abstract class DbTargetTest extends TestCase
         $query = (new Query())->select('log_time')->from(self::$logTable)->where(['category' => 'test']);
         $loggedTime = $query->createCommand(self::getConnection())->queryScalar();
         static::assertEquals($time, $loggedTime);
+    }
+
+    public function testTransactionRollBack(): void
+    {
+        $db = self::getConnection();
+        $logger = Yii::getLogger();
+
+        $tx = $db->beginTransaction();
+
+        $messsageData = [
+            'test',
+            Logger::LEVEL_WARNING,
+            'test',
+            time(),
+            [],
+        ];
+
+        $logger->messages[] = $messsageData;
+        $logger->flush(true);
+
+        // current db connection should still have a transaction
+        $this->assertNotNull($db->transaction);
+        // log db connection should not have transaction
+
+        $dbTarget = Yii::$app->log->targets['db'];
+        $this->assertInstanceOf(DbTarget::class, $dbTarget);
+        $this->assertNull($dbTarget->db->transaction);
+
+        $tx->rollBack();
+
+        $query = (new Query())->select('COUNT(*)')->from(self::$logTable)->where(['category' => 'test', 'message' => 'test']);
+        $count = $query->createCommand($db)->queryScalar();
+        static::assertEquals(1, $count);
     }
 }

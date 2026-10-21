@@ -1,14 +1,21 @@
 <?php
 
+/**
+ * @link https://www.yiiframework.com/
+ * @copyright Copyright (c) 2008 Yii Software LLC
+ * @license https://www.yiiframework.com/license/
+ */
+
+declare(strict_types=1);
+
 namespace yiiunit\framework\behaviors;
 
 use Yii;
-use yii\base\Object;
+use yii\base\BaseObject;
 use yii\behaviors\BlameableBehavior;
+use yii\db\ActiveRecord;
 use yii\db\BaseActiveRecord;
 use yiiunit\TestCase;
-use yii\db\Connection;
-use yii\db\ActiveRecord;
 
 /**
  * Unit test for [[\yii\behaviors\BlameableBehavior]].
@@ -17,14 +24,14 @@ use yii\db\ActiveRecord;
  */
 class BlameableBehaviorTest extends TestCase
 {
-    public static function setUpBeforeClass()
+    public static function setUpBeforeClass(): void
     {
         if (!extension_loaded('pdo') || !extension_loaded('pdo_sqlite')) {
             static::markTestSkipped('PDO and SQLite extensions are required.');
         }
     }
 
-    public function setUp()
+    protected function setUp(): void
     {
         $this->mockApplication([
             'components' => [
@@ -34,8 +41,8 @@ class BlameableBehaviorTest extends TestCase
                 ],
                 'user' => [
                     'class' => 'yiiunit\framework\behaviors\UserMock',
-                ]
-            ]
+                ],
+            ],
         ]);
 
         $columns = [
@@ -48,6 +55,14 @@ class BlameableBehaviorTest extends TestCase
         $this->getUser()->login(10);
     }
 
+    protected function tearDown(): void
+    {
+        Yii::$app->getDb()->close();
+        parent::tearDown();
+        gc_enable();
+        gc_collect_cycles();
+    }
+
     /**
      * @return UserMock
      */
@@ -56,13 +71,7 @@ class BlameableBehaviorTest extends TestCase
         return Yii::$app->get('user');
     }
 
-    public function tearDown()
-    {
-        Yii::$app->getDb()->close();
-        parent::tearDown();
-    }
-
-    public function testInsertUserIsGuest()
+    public function testInsertUserIsGuest(): void
     {
         $this->getUser()->logout();
 
@@ -74,7 +83,7 @@ class BlameableBehaviorTest extends TestCase
         $this->assertNull($model->updated_by);
     }
 
-    public function testInsertUserIsNotGuest()
+    public function testInsertUserIsNotGuest(): void
     {
         $model = new ActiveRecordBlameable();
         $model->name = __METHOD__;
@@ -84,7 +93,7 @@ class BlameableBehaviorTest extends TestCase
         $this->assertEquals(10, $model->updated_by);
     }
 
-    public function testUpdateUserIsNotGuest()
+    public function testUpdateUserIsNotGuest(): void
     {
         $model = new ActiveRecordBlameable();
         $model->name = __METHOD__;
@@ -92,14 +101,14 @@ class BlameableBehaviorTest extends TestCase
 
         $this->getUser()->login(20);
         $model = ActiveRecordBlameable::findOne(['name' => __METHOD__]);
-        $model->name = __CLASS__;
+        $model->name = self::class;
         $model->save();
 
         $this->assertEquals(10, $model->created_by);
         $this->assertEquals(20, $model->updated_by);
     }
 
-    public function testInsertCustomValue()
+    public function testInsertCustomValue(): void
     {
         $model = new ActiveRecordBlameable();
         $model->name = __METHOD__;
@@ -110,7 +119,7 @@ class BlameableBehaviorTest extends TestCase
         $this->assertEquals(42, $model->updated_by);
     }
 
-    public function testInsertClosure()
+    public function testInsertClosure(): void
     {
         $model = new ActiveRecordBlameable();
         $model->name = __METHOD__;
@@ -123,16 +132,16 @@ class BlameableBehaviorTest extends TestCase
         $this->assertEquals(strlen($model->name), $model->updated_by);
     }
 
-    public function testCustomAttributesAndEvents()
+    public function testCustomAttributesAndEvents(): void
     {
         $model = new ActiveRecordBlameable([
             'as blameable' => [
-                'class' => BlameableBehavior::className(),
+                'class' => BlameableBehavior::class,
                 'attributes' => [
                     BaseActiveRecord::EVENT_BEFORE_VALIDATE => 'created_by',
-                    BaseActiveRecord::EVENT_BEFORE_INSERT => ['created_by', 'updated_by']
-                ]
-            ]
+                    BaseActiveRecord::EVENT_BEFORE_INSERT => ['created_by', 'updated_by'],
+                ],
+            ],
         ]);
         $model->name = __METHOD__;
 
@@ -149,6 +158,51 @@ class BlameableBehaviorTest extends TestCase
         $this->assertEquals(20, $model->updated_by);
     }
 
+    public function testDefaultValue(): void
+    {
+        $this->getUser()->logout();
+
+        $model = new ActiveRecordBlameable([
+            'as blameable' => [
+                'class' => BlameableBehavior::class,
+                'defaultValue' => 2
+            ],
+        ]);
+
+        $model->name = __METHOD__;
+        $model->beforeSave(true);
+
+        $this->assertEquals(2, $model->created_by);
+        $this->assertEquals(2, $model->updated_by);
+    }
+
+    public function testDefaultValueWithClosure(): void
+    {
+        $model = new ActiveRecordBlameableWithDefaultValueClosure();
+        $model->name = __METHOD__;
+        $model->beforeSave(true);
+
+        $this->getUser()->logout();
+        $model->beforeSave(true);
+
+        $this->assertEquals(11, $model->created_by);
+        $this->assertEquals(11, $model->updated_by);
+    }
+}
+
+class ActiveRecordBlameableWithDefaultValueClosure extends ActiveRecordBlameable
+{
+    public function behaviors()
+    {
+        return [
+            'blameable' => [
+                'class' => BlameableBehavior::class,
+                'defaultValue' => function () {
+                    return $this->created_by + 1;
+                }
+            ],
+        ];
+    }
 }
 
 /**
@@ -158,7 +212,9 @@ class BlameableBehaviorTest extends TestCase
  * @property int $created_by
  * @property int $updated_by
  *
- * @property BlameableBehavior $blameable
+ * @property-read BlameableBehavior $blameable
+ *
+ * @mixin BlameableBehavior
  */
 class ActiveRecordBlameable extends ActiveRecord
 {
@@ -166,7 +222,7 @@ class ActiveRecordBlameable extends ActiveRecord
     {
         return [
             'blameable' => [
-                'class' => BlameableBehavior::className(),
+                'class' => BlameableBehavior::class,
             ],
         ];
     }
@@ -181,7 +237,10 @@ class ActiveRecordBlameable extends ActiveRecord
      */
     public function getBlameable()
     {
-        return $this->getBehavior('blameable');
+        /** @var BlameableBehavior $result */
+        $result = $this->getBehavior('blameable');
+
+        return $result;
     }
 
     public static function primaryKey()
@@ -190,19 +249,19 @@ class ActiveRecordBlameable extends ActiveRecord
     }
 }
 
-class UserMock extends Object
+class UserMock extends BaseObject
 {
     public $id;
 
     public $isGuest = true;
 
-    public function login($id)
+    public function login($id): void
     {
         $this->isGuest = false;
         $this->id = $id;
     }
 
-    public function logout()
+    public function logout(): void
     {
         $this->isGuest = true;
         $this->id = null;

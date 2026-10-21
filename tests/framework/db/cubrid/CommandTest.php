@@ -1,5 +1,11 @@
 <?php
 
+/**
+ * @link https://www.yiiframework.com/
+ * @copyright Copyright (c) 2008 Yii Software LLC
+ * @license https://www.yiiframework.com/license/
+ */
+
 namespace yiiunit\framework\db\cubrid;
 
 /**
@@ -10,7 +16,7 @@ class CommandTest extends \yiiunit\framework\db\CommandTest
 {
     public $driverName = 'cubrid';
 
-    public function testBindParamValue()
+    public function testBindParamValue(): void
     {
         $db = $this->getConnection();
 
@@ -70,12 +76,26 @@ class CommandTest extends \yiiunit\framework\db\CommandTest
         $this->assertEquals('user5@example.com', $command->queryScalar());
     }
 
-    public function testAutoQuoting()
+    public function testAutoQuoting(): void
     {
         $db = $this->getConnection(false);
 
         $sql = 'SELECT [[id]], [[t.name]] FROM {{customer}} t';
         $command = $db->createCommand($sql);
         $this->assertEquals('SELECT "id", "t"."name" FROM "customer" t', $command->sql);
+    }
+
+    public static function batchInsertSqlProvider(): array
+    {
+        $data = parent::batchInsertSqlProvider();
+        $data['issue11242']['expected'] = 'INSERT INTO "type" ("int_col", "float_col", "char_col") VALUES (NULL, NULL, \'Kyiv {{city}}, Ukraine\')';
+        $data['wrongBehavior']['expected'] = 'INSERT INTO "type" ("int_col", "float_col", "char_col") VALUES (\'\', \'\', \'Kyiv {{city}}, Ukraine\')';
+
+        return $data;
+    }
+
+    public function testAddDropCheck(): void
+    {
+        $this->markTestSkipped('CUBRID does not support adding/dropping check constraints.');
     }
 }

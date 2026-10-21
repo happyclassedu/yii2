@@ -1,8 +1,9 @@
 <?php
+
 /**
- * @link http://www.yiiframework.com/
+ * @link https://www.yiiframework.com/
  * @copyright Copyright (c) 2008 Yii Software LLC
- * @license http://www.yiiframework.com/license/
+ * @license https://www.yiiframework.com/license/
  */
 
 namespace yii\caching;
@@ -37,7 +38,7 @@ class ChainedDependency extends Dependency
 
     /**
      * Evaluates the dependency by generating and saving the data related with dependency.
-     * @param Cache $cache the cache component that is currently evaluating this dependency
+     * @param CacheInterface $cache the cache component that is currently evaluating this dependency
      */
     public function evaluateDependency($cache)
     {
@@ -49,7 +50,7 @@ class ChainedDependency extends Dependency
     /**
      * Generates the data needed to determine if dependency has been changed.
      * This method does nothing in this class.
-     * @param Cache $cache the cache component that is currently evaluating this dependency
+     * @param CacheInterface $cache the cache component that is currently evaluating this dependency
      * @return mixed the data needed to determine if dependency has been changed.
      */
     protected function generateDependencyData($cache)
@@ -58,7 +59,7 @@ class ChainedDependency extends Dependency
     }
 
     /**
-     * @inheritdoc
+     * {@inheritdoc}
      */
     public function isChanged($cache)
     {
@@ -69,6 +70,7 @@ class ChainedDependency extends Dependency
                 return false;
             }
         }
+
         return !$this->dependOnAll;
     }
 }

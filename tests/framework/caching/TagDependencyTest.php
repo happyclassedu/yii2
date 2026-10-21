@@ -1,16 +1,23 @@
 <?php
+
+/**
+ * @link https://www.yiiframework.com/
+ * @copyright Copyright (c) 2008 Yii Software LLC
+ * @license https://www.yiiframework.com/license/
+ */
+
 namespace yiiunit\framework\caching;
 
-use yiiunit\TestCase;
 use yii\caching\FileCache;
 use yii\caching\TagDependency;
+use yiiunit\TestCase;
 
 /**
  * @group caching
  */
 class TagDependencyTest extends TestCase
 {
-    public function testInvalidate()
+    public function testInvalidate(): void
     {
         $cache = new FileCache(['cachePath' => '@yiiunit/runtime/cache']);
 

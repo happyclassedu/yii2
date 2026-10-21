@@ -1,34 +1,39 @@
 <?php
+
 /**
- * @author Carsten Brandt <mail@cebe.cc>
+ * @link https://www.yiiframework.com/
+ * @copyright Copyright (c) 2008 Yii Software LLC
+ * @license https://www.yiiframework.com/license/
  */
 
 namespace yiiunit\framework\web;
 
+use yiiunit\TestCase;
+use Yii;
 use yii\helpers\FileHelper;
 use yii\web\AssetConverter;
 
 /**
  * @group web
  */
-class AssetConverterTest extends \yiiunit\TestCase
+class AssetConverterTest extends TestCase
 {
     /**
      * @var string temporary files path
      */
     protected $tmpPath;
 
-    protected function setUp()
+    protected function setUp(): void
     {
         parent::setUp();
         $this->mockApplication();
-        $this->tmpPath = \Yii::$app->runtimePath . '/assetConverterTest_' . getmypid();
+        $this->tmpPath = Yii::$app->runtimePath . '/assetConverterTest_' . getmypid();
         if (!is_dir($this->tmpPath)) {
             mkdir($this->tmpPath, 0777, true);
         }
     }
 
-    protected function tearDown()
+    protected function tearDown(): void
     {
         if (is_dir($this->tmpPath)) {
             FileHelper::removeDirectory($this->tmpPath);
@@ -38,10 +43,12 @@ class AssetConverterTest extends \yiiunit\TestCase
 
     // Tests :
 
-    public function testConvert()
+    public function testConvert(): void
     {
         $tmpPath = $this->tmpPath;
-        file_put_contents($tmpPath . '/test.php', <<<EOF
+        file_put_contents(
+            $tmpPath . '/test.php',
+            <<<EOF
 <?php
 
 echo "Hello World!\n";
@@ -53,17 +60,19 @@ EOF
         $converter->commands['php'] = ['txt', 'php {from} > {to}'];
         $this->assertEquals('test.txt', $converter->convert('test.php', $tmpPath));
 
-        $this->assertTrue(file_exists($tmpPath . '/test.txt'), 'Failed asserting that asset output file exists.');
-        $this->assertEquals("Hello World!\nHello Yii!", file_get_contents($tmpPath . '/test.txt'));
+        $this->assertFileExists($tmpPath . '/test.txt', 'Failed asserting that asset output file exists.');
+        $this->assertStringEqualsFile($tmpPath . '/test.txt', "Hello World!\nHello Yii!");
     }
 
     /**
      * @depends testConvert
      */
-    public function testForceConvert()
+    public function testForceConvert(): void
     {
         $tmpPath = $this->tmpPath;
-        file_put_contents($tmpPath . '/test.php', <<<EOF
+        file_put_contents(
+            $tmpPath . '/test.php',
+            <<<'EOF'
 <?php
 
 echo microtime();
@@ -78,7 +87,7 @@ EOF
 
         usleep(1);
         $converter->convert('test.php', $tmpPath);
-        $this->assertEquals($initialConvertTime, file_get_contents($tmpPath . '/test.txt'));
+        $this->assertStringEqualsFile($tmpPath . '/test.txt', $initialConvertTime);
 
         $converter->forceConvert = true;
         $converter->convert('test.php', $tmpPath);

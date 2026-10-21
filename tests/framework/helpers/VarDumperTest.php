@@ -1,6 +1,14 @@
 <?php
+
+/**
+ * @link https://www.yiiframework.com/
+ * @copyright Copyright (c) 2008 Yii Software LLC
+ * @license https://www.yiiframework.com/license/
+ */
+
 namespace yiiunit\framework\helpers;
 
+use StdClass;
 use yii\helpers\VarDumper;
 use yiiunit\data\helpers\CustomDebugInfo;
 use yiiunit\TestCase;
@@ -10,73 +18,81 @@ use yiiunit\TestCase;
  */
 class VarDumperTest extends TestCase
 {
-    public function testDumpIncompleteObject()
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        // destroy application, Helper must work without Yii::$app
+        $this->destroyApplication();
+    }
+
+    public function testDumpIncompleteObject(): void
     {
         $serializedObj = 'O:16:"nonExistingClass":0:{}';
         $incompleteObj = unserialize($serializedObj);
         $dumpResult = VarDumper::dumpAsString($incompleteObj);
-        $this->assertContains("__PHP_Incomplete_Class#1\n(", $dumpResult);
-        $this->assertContains("nonExistingClass", $dumpResult);
+        $this->assertStringContainsString("__PHP_Incomplete_Class#1\n(", $dumpResult);
+        $this->assertStringContainsString('nonExistingClass', $dumpResult);
     }
 
-    public function testExportIncompleteObject()
+    public function testExportIncompleteObject(): void
     {
         $serializedObj = 'O:16:"nonExistingClass":0:{}';
         $incompleteObj = unserialize($serializedObj);
         $exportResult = VarDumper::export($incompleteObj);
-        $this->assertContains("nonExistingClass", $exportResult);
+        $this->assertStringContainsString('nonExistingClass', $exportResult);
     }
 
-    public function testDumpObject()
+    public function testDumpObject(): void
     {
-        $obj = new \StdClass();
+        $obj = new StdClass();
         $this->assertEquals("stdClass#1\n(\n)", VarDumper::dumpAsString($obj));
 
-        $obj = new \StdClass();
+        $obj = new StdClass();
         $obj->name = 'test-name';
         $obj->price = 19;
         $dumpResult = VarDumper::dumpAsString($obj);
-        $this->assertContains("stdClass#1\n(", $dumpResult);
-        $this->assertContains("[name] => 'test-name'", $dumpResult);
-        $this->assertContains("[price] => 19", $dumpResult);
+        $this->assertStringContainsString("stdClass#1\n(", $dumpResult);
+        $this->assertStringContainsString("[name] => 'test-name'", $dumpResult);
+        $this->assertStringContainsString('[price] => 19', $dumpResult);
     }
 
     /**
-     * Data provider for [[testExport()]]
+     * Data provider for [[testExport()]].
      * @return array test data
      */
-    public function dataProviderExport()
+    public static function dataProviderExport(): array
     {
         // Regular :
 
         $data = [
             [
                 'test string',
-                var_export('test string', true)
+                var_export('test string', true),
             ],
             [
                 75,
-                var_export(75, true)
+                var_export(75, true),
             ],
             [
                 7.5,
-                var_export(7.5, true)
+                var_export(7.5, true),
             ],
             [
                 null,
-                'null'
+                'null',
             ],
             [
                 true,
-                'true'
+                'true',
             ],
             [
                 false,
-                'false'
+                'false',
             ],
             [
                 [],
-                '[]'
+                '[]',
             ],
         ];
 
@@ -86,7 +102,7 @@ class VarDumperTest extends TestCase
             'key1' => 'value1',
             'key2' => 'value2',
         ];
-        $expectedResult = <<<RESULT
+        $expectedResult = <<<'RESULT'
 [
     'key1' => 'value1',
     'key2' => 'value2',
@@ -98,7 +114,7 @@ RESULT;
             'value1',
             'value2',
         ];
-        $expectedResult = <<<RESULT
+        $expectedResult = <<<'RESULT'
 [
     'value1',
     'value2',
@@ -114,7 +130,7 @@ RESULT;
                 'subkey2' => 'value3',
             ],
         ];
-        $expectedResult = <<<RESULT
+        $expectedResult = <<<'RESULT'
 [
     'key1' => [
         'subkey1' => 'value2',
@@ -128,13 +144,19 @@ RESULT;
 
         // Objects :
 
-        $var = new \StdClass();
+        $var = new StdClass();
         $var->testField = 'Test Value';
         $expectedResult = "unserialize('" . serialize($var) . "')";
         $data[] = [$var, $expectedResult];
 
-        $var = function () {return 2;};
-        $expectedResult = 'function () {return 2;}';
+        $var = function () {
+            return 2;
+        };
+        $expectedResult = 'function () {
+
+            return 2;
+
+        }';
         $data[] = [$var, $expectedResult];
 
         return $data;
@@ -146,7 +168,7 @@ RESULT;
      * @param mixed $var
      * @param string $expectedResult
      */
-    public function testExport($var, $expectedResult)
+    public function testExport($var, $expectedResult): void
     {
         $exportResult = VarDumper::export($var);
         $this->assertEqualsWithoutLE($expectedResult, $exportResult);
@@ -156,18 +178,22 @@ RESULT;
     /**
      * @depends testExport
      */
-    public function testExportObjectFallback()
+    public function testExportObjectFallback(): void
     {
-        $var = new \StdClass();
-        $var->testFunction = function () {return 2;};
+        $var = new StdClass();
+        $var->testFunction = function () {
+            return 2;
+        };
         $exportResult = VarDumper::export($var);
         $this->assertNotEmpty($exportResult);
 
-        $master = new \StdClass();
-        $slave = new \StdClass();
+        $master = new StdClass();
+        $slave = new StdClass();
         $master->slave = $slave;
         $slave->master = $master;
-        $master->function = function() {return true;};
+        $master->function = function () {
+            return true;
+        };
 
         $exportResult = VarDumper::export($master);
         $this->assertNotEmpty($exportResult);
@@ -176,14 +202,30 @@ RESULT;
     /**
      * @depends testDumpObject
      */
-    public function testDumpClassWithCustomDebugInfo()
+    public function testDumpClassWithCustomDebugInfo(): void
     {
         $object = new CustomDebugInfo();
         $object->volume = 10;
         $object->unitPrice = 15;
 
         $dumpResult = VarDumper::dumpAsString($object);
-        $this->assertContains('totalPrice', $dumpResult);
-        $this->assertNotContains('unitPrice', $dumpResult);
+        $this->assertStringContainsString('totalPrice', $dumpResult);
+        $this->assertStringNotContainsString('unitPrice', $dumpResult);
+    }
+
+    /**
+     * @dataProvider \yiiunit\framework\helpers\providers\VarDumperProvider::dumpAsStringHighlighted
+     *
+     * @param mixed $var
+     */
+    public function testDumpAsStringHighlighted($var, string $expectedBeforePhp83, string $expectedSincePhp83): void
+    {
+        $expected = PHP_VERSION_ID >= 80300 ? $expectedSincePhp83 : $expectedBeforePhp83;
+
+        $this->assertSame(
+            $expected,
+            VarDumper::dumpAsString($var, 10, true),
+            'Dumped output does not match expected result',
+        );
     }
 }

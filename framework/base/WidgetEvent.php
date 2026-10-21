@@ -1,8 +1,9 @@
 <?php
+
 /**
- * @link http://www.yiiframework.com/
+ * @link https://www.yiiframework.com/
  * @copyright Copyright (c) 2008 Yii Software LLC
- * @license http://www.yiiframework.com/license/
+ * @license https://www.yiiframework.com/license/
  */
 
 namespace yii\base;
@@ -22,7 +23,7 @@ class WidgetEvent extends Event
      */
     public $result;
     /**
-     * @var boolean whether to continue running the widget. Event handlers of
+     * @var bool whether to continue running the widget. Event handlers of
      * [[Widget::EVENT_BEFORE_RUN]] may set this property to decide whether
      * to continue running the current widget.
      */

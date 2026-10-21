@@ -1,8 +1,16 @@
 <?php
 
+/**
+ * @link https://www.yiiframework.com/
+ * @copyright Copyright (c) 2008 Yii Software LLC
+ * @license https://www.yiiframework.com/license/
+ */
+
 namespace yiiunit\framework\db\sqlite;
 
+use Yii;
 use yii\db\Connection;
+use yii\db\Exception;
 use yii\db\Transaction;
 use yiiunit\data\ar\ActiveRecord;
 use yiiunit\data\ar\Customer;
@@ -15,7 +23,7 @@ class ConnectionTest extends \yiiunit\framework\db\ConnectionTest
 {
     protected $driverName = 'sqlite';
 
-    public function testConstruct()
+    public function testConstruct(): void
     {
         $connection = $this->getConnection(false);
         $params = $this->database;
@@ -23,7 +31,7 @@ class ConnectionTest extends \yiiunit\framework\db\ConnectionTest
         $this->assertEquals($params['dsn'], $connection->dsn);
     }
 
-    public function testQuoteValue()
+    public function testQuoteValue(): void
     {
         $connection = $this->getConnection(false);
         $this->assertEquals(123, $connection->quoteValue(123));
@@ -31,7 +39,7 @@ class ConnectionTest extends \yiiunit\framework\db\ConnectionTest
         $this->assertEquals("'It''s interesting'", $connection->quoteValue("It's interesting"));
     }
 
-    public function testTransactionIsolation()
+    public function testTransactionIsolation(): void
     {
         $connection = $this->getConnection(true);
 
@@ -40,9 +48,11 @@ class ConnectionTest extends \yiiunit\framework\db\ConnectionTest
 
         $transaction = $connection->beginTransaction(Transaction::SERIALIZABLE);
         $transaction->rollBack();
+
+        $this->assertTrue(true); // No exceptions means test is passed.
     }
 
-    public function testMasterSlave()
+    public function testMasterSlave(): void
     {
         $counts = [[0, 2], [1, 2], [2, 2]];
 
@@ -51,7 +61,7 @@ class ConnectionTest extends \yiiunit\framework\db\ConnectionTest
 
             $db = $this->prepareMasterSlave($masterCount, $slaveCount);
 
-            $this->assertTrue($db->getSlave() instanceof Connection);
+            $this->assertInstanceOf(Connection::class, $db->getSlave());
             $this->assertTrue($db->getSlave()->isActive);
             $this->assertFalse($db->isActive);
 
@@ -63,14 +73,14 @@ class ConnectionTest extends \yiiunit\framework\db\ConnectionTest
             $db->createCommand("UPDATE profile SET description='test' WHERE id=1")->execute();
             $this->assertTrue($db->isActive);
             if ($masterCount > 0) {
-                $this->assertTrue($db->getMaster() instanceof Connection);
+                $this->assertInstanceOf(Connection::class, $db->getMaster());
                 $this->assertTrue($db->getMaster()->isActive);
             } else {
                 $this->assertNull($db->getMaster());
             }
-            $this->assertNotEquals('test', $db->createCommand("SELECT description FROM profile WHERE id=1")->queryScalar());
+            $this->assertNotEquals('test', $db->createCommand('SELECT description FROM profile WHERE id=1')->queryScalar());
             $result = $db->useMaster(function (Connection $db) {
-                return $db->createCommand("SELECT description FROM profile WHERE id=1")->queryScalar();
+                return $db->createCommand('SELECT description FROM profile WHERE id=1')->queryScalar();
             });
             $this->assertEquals('test', $result);
 
@@ -79,7 +89,7 @@ class ConnectionTest extends \yiiunit\framework\db\ConnectionTest
             $this->assertFalse($db->isActive);
 
             $customer = Customer::findOne(1);
-            $this->assertTrue($customer instanceof Customer);
+            $this->assertInstanceOf(Customer::class, $customer);
             $this->assertEquals('user1', $customer->name);
             $this->assertFalse($db->isActive);
 
@@ -87,7 +97,7 @@ class ConnectionTest extends \yiiunit\framework\db\ConnectionTest
             $customer->save();
             $this->assertTrue($db->isActive);
             $customer = Customer::findOne(1);
-            $this->assertTrue($customer instanceof Customer);
+            $this->assertInstanceOf(Customer::class, $customer);
             $this->assertEquals('user1', $customer->name);
             $result = $db->useMaster(function () {
                 return Customer::findOne(1)->name;
@@ -96,7 +106,7 @@ class ConnectionTest extends \yiiunit\framework\db\ConnectionTest
         }
     }
 
-    public function testMastersShuffled()
+    public function testMastersShuffled(): void
     {
         $mastersCount = 2;
         $slavesCount = 2;
@@ -106,19 +116,22 @@ class ConnectionTest extends \yiiunit\framework\db\ConnectionTest
 
         $hit_slaves = $hit_masters = [];
 
-        for ($i = $nodesCount * $retryPerNode; $i-- > 0; ) {
+        for ($i = $nodesCount * $retryPerNode; $i-- > 0;) {
             $db = $this->prepareMasterSlave($mastersCount, $slavesCount);
             $db->shuffleMasters = true;
 
             $hit_slaves[$db->getSlave()->dsn] = true;
             $hit_masters[$db->getMaster()->dsn] = true;
+            if (\count($hit_slaves) === $slavesCount && \count($hit_masters) === $mastersCount) {
+                break;
+            }
         }
 
-        $this->assertEquals($mastersCount, count($hit_masters), 'all masters hit');
-        $this->assertEquals($slavesCount, count($hit_slaves), 'all slaves hit');
+        $this->assertCount($mastersCount, $hit_masters, 'all masters hit');
+        $this->assertCount($slavesCount, $hit_slaves, 'all slaves hit');
     }
 
-    public function testMastersSequential()
+    public function testMastersSequential(): void
     {
         $mastersCount = 2;
         $slavesCount = 2;
@@ -128,29 +141,32 @@ class ConnectionTest extends \yiiunit\framework\db\ConnectionTest
 
         $hit_slaves = $hit_masters = [];
 
-        for ($i = $nodesCount * $retryPerNode; $i-- > 0; ) {
+        for ($i = $nodesCount * $retryPerNode; $i-- > 0;) {
             $db = $this->prepareMasterSlave($mastersCount, $slavesCount);
             $db->shuffleMasters = false;
 
             $hit_slaves[$db->getSlave()->dsn] = true;
             $hit_masters[$db->getMaster()->dsn] = true;
+            if (\count($hit_slaves) === $slavesCount) {
+                break;
+            }
         }
 
-        $this->assertEquals(1, count($hit_masters), 'same master hit');
+        $this->assertCount(1, $hit_masters, 'same master hit');
         // slaves are always random
-        $this->assertEquals($slavesCount, count($hit_slaves), 'all slaves hit');
+        $this->assertCount($slavesCount, $hit_slaves, 'all slaves hit');
     }
 
-    public function testRestoreMasterAfterException()
+    public function testRestoreMasterAfterException(): void
     {
         $db = $this->prepareMasterSlave(1, 1);
         $this->assertTrue($db->enableSlaves);
         try {
             $db->useMaster(function (Connection $db) {
-                throw new \Exception('fail');
+                throw new Exception('fail');
             });
             $this->fail('Exception was caught somewhere');
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             // ok
         }
         $this->assertTrue($db->enableSlaves);
@@ -165,7 +181,7 @@ class ConnectionTest extends \yiiunit\framework\db\ConnectionTest
     {
         $databases = self::getParam('databases');
         $fixture = $databases[$this->driverName]['fixture'];
-        $basePath = \Yii::getAlias('@yiiunit/runtime');
+        $basePath = Yii::getAlias('@yiiunit/runtime');
 
         $config = [
             'class' => 'yii\db\Connection',
@@ -187,13 +203,13 @@ class ConnectionTest extends \yiiunit\framework\db\ConnectionTest
             $config['slaves'][] = $slave;
         }
 
-        return \Yii::createObject($config);
+        return Yii::createObject($config);
     }
 
-    public function testAliasDbPath()
+    public function testAliasDbPath(): void
     {
         $config = [
-            'dsn' => "sqlite:@yiiunit/runtime/yii2aliastest.sq3",
+            'dsn' => 'sqlite:@yiiunit/runtime/yii2aliastest.sq3',
         ];
         $connection = new Connection($config);
         $connection->open();

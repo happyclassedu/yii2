@@ -1,8 +1,9 @@
 <?php
+
 /**
- * @link http://www.yiiframework.com/
+ * @link https://www.yiiframework.com/
  * @copyright Copyright (c) 2008 Yii Software LLC
- * @license http://www.yiiframework.com/license/
+ * @license https://www.yiiframework.com/license/
  */
 
 namespace yiiunit\framework\i18n;
@@ -17,74 +18,74 @@ use yiiunit\TestCase;
  */
 class MessageFormatterTest extends TestCase
 {
-    const N = 'n';
-    const N_VALUE = 42;
-    const F = 'f';
-    const F_VALUE = 2e+8;
-    const F_VALUE_FORMATTED = "200,000,000";
-    const D = 'd';
-    const D_VALUE = 200000000.101;
-    const D_VALUE_FORMATTED = "200,000,000.101";
-    const D_VALUE_FORMATTED_INTEGER = "200,000,000";
-    const SUBJECT = 'сабж';
-    const SUBJECT_VALUE = 'Answer to the Ultimate Question of Life, the Universe, and Everything';
+    public const N = 'n';
+    public const N_VALUE = 42;
+    public const F = 'f';
+    public const F_VALUE = 2e+8;
+    public const F_VALUE_FORMATTED = '200,000,000';
+    public const D = 'd';
+    public const D_VALUE = 200000000.101;
+    public const D_VALUE_FORMATTED = '200,000,000.101';
+    public const D_VALUE_FORMATTED_INTEGER = '200,000,000';
+    public const SUBJECT = 'сабж';
+    public const SUBJECT_VALUE = 'Answer to the Ultimate Question of Life, the Universe, and Everything';
 
-    public function patterns()
+    public static function patterns(): array
     {
         return [
             [
-                '{'.self::SUBJECT.'} is {'.self::N.', number}', // pattern
-                self::SUBJECT_VALUE.' is '.self::N_VALUE, // expected
+                '{' . self::SUBJECT . '} is {' . self::N . ', number}', // pattern
+                self::SUBJECT_VALUE . ' is ' . self::N_VALUE, // expected
                 [ // params
                     self::N => self::N_VALUE,
                     self::SUBJECT => self::SUBJECT_VALUE,
-                ]
+                ],
             ],
 
             [
-                '{'.self::SUBJECT.'} is {'.self::N.', number, integer}', // pattern
-                self::SUBJECT_VALUE.' is '.self::N_VALUE, // expected
+                '{' . self::SUBJECT . '} is {' . self::N . ', number, integer}', // pattern
+                self::SUBJECT_VALUE . ' is ' . self::N_VALUE, // expected
                 [ // params
                     self::N => self::N_VALUE,
                     self::SUBJECT => self::SUBJECT_VALUE,
-                ]
+                ],
             ],
 
             [
-                'Here is a big number: {'.self::F.', number}', // pattern
-                'Here is a big number: '.self::F_VALUE_FORMATTED, // expected
+                'Here is a big number: {' . self::F . ', number}', // pattern
+                'Here is a big number: ' . self::F_VALUE_FORMATTED, // expected
                 [ // params
-                    self::F => self::F_VALUE
-                ]
+                    self::F => self::F_VALUE,
+                ],
             ],
 
 
             [
-                'Here is a big number: {'.self::F.', number, integer}', // pattern
-                'Here is a big number: '.self::F_VALUE_FORMATTED, // expected
+                'Here is a big number: {' . self::F . ', number, integer}', // pattern
+                'Here is a big number: ' . self::F_VALUE_FORMATTED, // expected
                 [ // params
-                    self::F => self::F_VALUE
-                ]
+                    self::F => self::F_VALUE,
+                ],
             ],
 
             [
-                'Here is a big number: {'.self::D.', number}', // pattern
-                'Here is a big number: '.self::D_VALUE_FORMATTED, // expected
+                'Here is a big number: {' . self::D . ', number}', // pattern
+                'Here is a big number: ' . self::D_VALUE_FORMATTED, // expected
                 [ // params
-                    self::D => self::D_VALUE
-                ]
+                    self::D => self::D_VALUE,
+                ],
             ],
 
             [
-                'Here is a big number: {'.self::D.', number, integer}', // pattern
-                'Here is a big number: '.self::D_VALUE_FORMATTED_INTEGER, // expected
+                'Here is a big number: {' . self::D . ', number, integer}', // pattern
+                'Here is a big number: ' . self::D_VALUE_FORMATTED_INTEGER, // expected
                 [ // params
-                    self::D => self::D_VALUE
-                ]
+                    self::D => self::D_VALUE,
+                ],
             ],
 
             // This one was provided by Aura.Intl. Thanks!
-            [<<<_MSG_
+            [<<<'_MSG_'
 {gender_of_host, select,
   female {{num_guests, plural, offset:1
       =0 {{host} does not give a party.}
@@ -108,10 +109,10 @@ _MSG_
                     'gender_of_host' => 'male',
                     'num_guests' => 4,
                     'host' => 'ralph',
-                    'guest' => 'beep'
+                    'guest' => 'beep',
                 ],
                 defined('INTL_ICU_VERSION') && version_compare(INTL_ICU_VERSION, '4.8', '<'),
-                'select format is available in ICU > 4.4 and plural format with =X selector is avilable since 4.8'
+                'select format is available in ICU > 4.4 and plural format with =X selector is avilable since 4.8',
             ],
 
             [
@@ -122,7 +123,7 @@ _MSG_
                     'gender' => 'male',
                 ],
                 defined('INTL_ICU_VERSION') && version_compare(INTL_ICU_VERSION, '4.4.2', '<'),
-                'select format is available in ICU > 4.4'
+                'select format is available in ICU > 4.4',
             ],
 
             // verify pattern in select does not get replaced
@@ -138,7 +139,7 @@ _MSG_
                     'it' => 'wtf',
                 ],
                 defined('INTL_ICU_VERSION') && version_compare(INTL_ICU_VERSION, '4.4.2', '<'),
-                'select format is available in ICU > 4.4'
+                'select format is available in ICU > 4.4',
             ],
 
             // verify pattern in select message gets replaced
@@ -152,7 +153,7 @@ _MSG_
                     'she' => 'wtf',
                 ],
                 defined('INTL_ICU_VERSION') && version_compare(INTL_ICU_VERSION, '4.8', '<'),
-                'parameters in select format do not seem to work in ICU < 4.8'
+                'parameters in select format do not seem to work in ICU < 4.8',
             ],
 
             // some parser specific verifications
@@ -166,7 +167,7 @@ _MSG_
                     'she' => 'wtf',
                 ],
                 defined('INTL_ICU_VERSION') && version_compare(INTL_ICU_VERSION, '4.4.2', '<'),
-                'select format is available in ICU > 4.4'
+                'select format is available in ICU > 4.4',
             ],
 
             // formatting a message that contains params but they are not provided.
@@ -192,7 +193,7 @@ _MSG_
                     'totalCount' => 12,
                     'page' => 1,
                     'pageCount' => 2,
-                ]
+                ],
             ],
             [
                 'Showing <b>{begin, number}-{end, number}</b> of <b>{totalCount, number}</b> {totalCount, plural, one{item} other{items}}.',
@@ -204,7 +205,7 @@ _MSG_
                     'totalCount' => 1,
                     'page' => 1,
                     'pageCount' => 1,
-                ]
+                ],
             ],
             [
                 'Showing <b>{begin, number}-{end, number}</b> of <b>{totalCount, number}</b> {totalCount, plural, one{item} other{items}}.',
@@ -216,19 +217,19 @@ _MSG_
                     'totalCount' => 0,
                     'page' => 1,
                     'pageCount' => 1,
-                ]
+                ],
             ],
             [
                 'Total <b>{count, number}</b> {count, plural, one{item} other{items}}.',
                 'Total <b>{count, number}</b> {count, plural, one{item} other{items}}.',
-                []
+                [],
             ],
             [
                 'Total <b>{count, number}</b> {count, plural, one{item} other{items}}.',
                 'Total <b>1</b> item.',
                 [
                     'count' => 1,
-                ]
+                ],
             ],
             [
                 'Total <b>{count, number}</b> {count, plural, one{item} other{items}}.',
@@ -237,7 +238,7 @@ _MSG_
                     'begin' => 5,
                     'count' => 1,
                     'end' => 10,
-                ]
+                ],
             ],
             [
                 '{0, plural, one {offer} other {offers}}',
@@ -259,76 +260,89 @@ _MSG_
                 'offers',
                 [13],
             ],
+            [
+                'Message without {closing} {brace',
+                false, // Message pattern is invalid
+                ['closing brace and with'],
+            ],
+            [
+                '{gender, select, female{Уважаемая} other{Уважаемый}} {firstname},',
+                'Уважаемый Vadim,',
+                [
+                    'gender' => null,
+                    'firstname' => 'Vadim'
+                ],
+            ],
         ];
     }
 
-    public function parsePatterns()
+    public static function parsePatterns(): array
     {
         return [
             [
-                self::SUBJECT_VALUE.' is {0, number}', // pattern
-                self::SUBJECT_VALUE.' is '.self::N_VALUE, // expected
+                self::SUBJECT_VALUE . ' is {0, number}', // pattern
+                self::SUBJECT_VALUE . ' is ' . self::N_VALUE, // expected
                 [ // params
                     0 => self::N_VALUE,
-                ]
-            ],
-
-            [
-                self::SUBJECT_VALUE.' is {'.self::N.', number}', // pattern
-                self::SUBJECT_VALUE.' is '.self::N_VALUE, // expected
-                [ // params
-                    self::N => self::N_VALUE,
-                ]
-            ],
-
-            [
-                self::SUBJECT_VALUE.' is {'.self::N.', number, integer}', // pattern
-                self::SUBJECT_VALUE.' is '.self::N_VALUE, // expected
-                [ // params
-                    self::N => self::N_VALUE,
-                ]
-            ],
-
-            [
-                "{0,number,integer} monkeys on {1,number,integer} trees make {2,number} monkeys per tree",
-                "4,560 monkeys on 123 trees make 37.073 monkeys per tree",
-                [
-                    0 => 4560,
-                    1 => 123,
-                    2 => 37.073
                 ],
-                'en-US'
             ],
 
             [
-                "{0,number,integer} Affen auf {1,number,integer} Bäumen sind {2,number} Affen pro Baum",
-                "4.560 Affen auf 123 Bäumen sind 37,073 Affen pro Baum",
+                self::SUBJECT_VALUE . ' is {' . self::N . ', number}', // pattern
+                self::SUBJECT_VALUE . ' is ' . self::N_VALUE, // expected
+                [ // params
+                    self::N => self::N_VALUE,
+                ],
+            ],
+
+            [
+                self::SUBJECT_VALUE . ' is {' . self::N . ', number, integer}', // pattern
+                self::SUBJECT_VALUE . ' is ' . self::N_VALUE, // expected
+                [ // params
+                    self::N => self::N_VALUE,
+                ],
+            ],
+
+            [
+                '{0,number,integer} monkeys on {1,number,integer} trees make {2,number} monkeys per tree',
+                '4,560 monkeys on 123 trees make 37.073 monkeys per tree',
                 [
                     0 => 4560,
                     1 => 123,
-                    2 => 37.073
+                    2 => 37.073,
+                ],
+                'en-US',
+            ],
+
+            [
+                '{0,number,integer} Affen auf {1,number,integer} Bäumen sind {2,number} Affen pro Baum',
+                '4.560 Affen auf 123 Bäumen sind 37,073 Affen pro Baum',
+                [
+                    0 => 4560,
+                    1 => 123,
+                    2 => 37.073,
                 ],
                 'de',
             ],
 
             [
-                "{monkeyCount,number,integer} monkeys on {trees,number,integer} trees make {monkeysPerTree,number} monkeys per tree",
-                "4,560 monkeys on 123 trees make 37.073 monkeys per tree",
+                '{monkeyCount,number,integer} monkeys on {trees,number,integer} trees make {monkeysPerTree,number} monkeys per tree',
+                '4,560 monkeys on 123 trees make 37.073 monkeys per tree',
                 [
                     'monkeyCount' => 4560,
                     'trees' => 123,
-                    'monkeysPerTree' => 37.073
+                    'monkeysPerTree' => 37.073,
                 ],
-                'en-US'
+                'en-US',
             ],
 
             [
-                "{monkeyCount,number,integer} Affen auf {trees,number,integer} Bäumen sind {monkeysPerTree,number} Affen pro Baum",
-                "4.560 Affen auf 123 Bäumen sind 37,073 Affen pro Baum",
+                '{monkeyCount,number,integer} Affen auf {trees,number,integer} Bäumen sind {monkeysPerTree,number} Affen pro Baum',
+                '4.560 Affen auf 123 Bäumen sind 37,073 Affen pro Baum',
                 [
                     'monkeyCount' => 4560,
                     'trees' => 123,
-                    'monkeysPerTree' => 37.073
+                    'monkeysPerTree' => 37.073,
                 ],
                 'de',
             ],
@@ -337,8 +351,13 @@ _MSG_
 
     /**
      * @dataProvider patterns
+     * @param string $pattern
+     * @param string $expected
+     * @param array $args
+     * @param bool $skip
+     * @param string $skipMessage
      */
-    public function testNamedArguments($pattern, $expected, $args, $skip = false, $skipMessage = '')
+    public function testNamedArguments($pattern, $expected, $args, $skip = false, $skipMessage = ''): void
     {
         if ($skip) {
             $this->markTestSkipped($skipMessage);
@@ -350,11 +369,15 @@ _MSG_
 
     /**
      * @dataProvider parsePatterns
+     * @param string $pattern
+     * @param string $expected
+     * @param array $args
+     * @param string $locale
      */
-    public function testParseNamedArguments($pattern, $expected, $args, $locale = 'en-US')
+    public function testParseNamedArguments($pattern, $expected, $args, $locale = 'en-US'): void
     {
-        if (!extension_loaded("intl")) {
-            $this->markTestSkipped("intl not installed. Skipping.");
+        if (!extension_loaded('intl')) {
+            $this->markTestSkipped('intl not installed. Skipping.');
         }
 
         $formatter = new MessageFormatter();
@@ -362,36 +385,31 @@ _MSG_
         $this->assertEquals($args, $result, $formatter->getErrorMessage() . ' Pattern: ' . $pattern);
     }
 
-    public function testInsufficientArguments()
+    public function testInsufficientArguments(): void
     {
-        $expected = '{'.self::SUBJECT.'} is '.self::N_VALUE;
+        $expected = '{' . self::SUBJECT . '} is ' . self::N_VALUE;
 
         $formatter = new MessageFormatter();
-        $result = $formatter->format('{'.self::SUBJECT.'} is {'.self::N.', number}', [
+        $result = $formatter->format('{' . self::SUBJECT . '} is {' . self::N . ', number}', [
             self::N => self::N_VALUE,
         ], 'en-US');
 
         $this->assertEquals($expected, $result, $formatter->getErrorMessage());
     }
 
-    public function testNoParams()
+    public function testNoParams(): void
     {
-        $pattern = '{'.self::SUBJECT.'} is '.self::N;
+        $pattern = '{' . self::SUBJECT . '} is ' . self::N;
         $formatter = new MessageFormatter();
         $result = $formatter->format($pattern, [], 'en-US');
         $this->assertEquals($pattern, $result, $formatter->getErrorMessage());
     }
 
-    public function testMalformedFormatter()
+    public function testMalformedFormatter(): void
     {
         $formatter = new MessageFormatter();
         $result = $formatter->format('{word,umber}', ['word' => 'test'], 'en-US'); // typo is intentional, message pattern should be invalid
         $this->assertFalse($result);
         $this->assertNotEmpty($formatter->getErrorMessage());
-        if (PHP_MAJOR_VERSION < 7) {
-            $this->assertContains('message formatter creation failed', $formatter->getErrorMessage());
-        } else {
-            $this->assertContains('Constructor failed', $formatter->getErrorMessage());
-        }
     }
 }

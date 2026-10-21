@@ -1,8 +1,9 @@
 <?php
+
 /**
- * @link http://www.yiiframework.com/
+ * @link https://www.yiiframework.com/
  * @copyright Copyright (c) 2008 Yii Software LLC
- * @license http://www.yiiframework.com/license/
+ * @license https://www.yiiframework.com/license/
  */
 
 namespace yii\db\oci;
@@ -19,7 +20,7 @@ use yii\db\ColumnSchemaBuilder as AbstractColumnSchemaBuilder;
 class ColumnSchemaBuilder extends AbstractColumnSchemaBuilder
 {
     /**
-     * @inheritdoc
+     * {@inheritdoc}
      */
     protected function buildUnsignedString()
     {
@@ -27,7 +28,7 @@ class ColumnSchemaBuilder extends AbstractColumnSchemaBuilder
     }
 
     /**
-     * @inheritdoc
+     * {@inheritdoc}
      */
     public function __toString()
     {
@@ -41,6 +42,7 @@ class ColumnSchemaBuilder extends AbstractColumnSchemaBuilder
             default:
                 $format = '{type}{length}{default}{notnull}{check}{append}';
         }
+
         return $this->buildCompleteString($format);
     }
 }

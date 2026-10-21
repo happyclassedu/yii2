@@ -1,5 +1,11 @@
 <?php
 
+/**
+ * @link https://www.yiiframework.com/
+ * @copyright Copyright (c) 2008 Yii Software LLC
+ * @license https://www.yiiframework.com/license/
+ */
+
 namespace yiiunit\framework\widgets;
 
 use yii\data\ArrayDataProvider;
@@ -9,7 +15,7 @@ use yiiunit\TestCase;
 
 class PjaxTest extends TestCase
 {
-    public function testGeneratedIdByPjaxWidget()
+    public function testGeneratedIdByPjaxWidget(): void
     {
         ListView::$counter = 0;
         Pjax::$counter = 0;
@@ -28,10 +34,27 @@ class PjaxTest extends TestCase
         $this->assertEquals('p1', $pjax2->options['id']);
     }
 
-    protected function setUp()
+    protected function setUp(): void
     {
         parent::setUp();
         $this->mockWebApplication();
     }
 
+    /**
+     * @see https://github.com/yiisoft/yii2/issues/15536
+     */
+    public function testShouldTriggerInitEvent(): void
+    {
+        $initTriggered = false;
+        ob_start();
+        $pjax = new Pjax(
+            [
+                'on init' => function () use (&$initTriggered) {
+                    $initTriggered = true;
+                }
+            ]
+        );
+        ob_end_clean();
+        $this->assertTrue($initTriggered);
+    }
 }

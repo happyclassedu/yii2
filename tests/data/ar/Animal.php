@@ -1,15 +1,17 @@
 <?php
 
 /**
- * @link http://www.yiiframework.com/
+ * @link https://www.yiiframework.com/
  * @copyright Copyright (c) 2008 Yii Software LLC
- * @license http://www.yiiframework.com/license/
+ * @license https://www.yiiframework.com/license/
  */
+
+declare(strict_types=1);
 
 namespace yiiunit\data\ar;
 
 /**
- * Class Animal
+ * Class Animal.
  *
  * @author Jose Lorente <jose.lorente.martin@gmail.com>
  * @property int $id
@@ -17,7 +19,6 @@ namespace yiiunit\data\ar;
  */
 class Animal extends ActiveRecord
 {
-
     public $does;
 
     public static function tableName()
@@ -25,10 +26,10 @@ class Animal extends ActiveRecord
         return 'animal';
     }
 
-    public function init()
+    public function init(): void
     {
         parent::init();
-        $this->type = get_called_class();
+        $this->type = static::class;
     }
 
     public function getDoes()
@@ -37,14 +38,12 @@ class Animal extends ActiveRecord
     }
 
     /**
-     *
      * @param type $row
-     * @return \yiiunit\data\ar\Animal
+     * @return Animal
      */
     public static function instantiate($row)
     {
         $class = $row['type'];
-        return new $class;
+        return new $class();
     }
-
 }

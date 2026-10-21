@@ -38,13 +38,17 @@ in the array if an end user requests for them via the `expand` query parameter. 
 // returns all fields as declared in fields()
 http://localhost/users
 
-// only returns field id and email, provided they are declared in fields()
+// only returns "id" and "email" fields, provided they are declared in fields()
 http://localhost/users?fields=id,email
 
-// returns all fields in fields() and field profile if it is in extraFields()
+// returns all fields in fields() and field "profile" if it is in extraFields()
 http://localhost/users?expand=profile
 
-// only returns field id, email and profile, provided they are in fields() and extraFields()
+// returns all fields in fields() and "author" from post if
+// it is in extraFields() of post model
+http://localhost/comments?expand=post.author
+
+// only returns "id" and "email" provided they are in fields() and "profile" if it is in extraFields()
 http://localhost/users?fields=id,email&expand=profile
 ```
 
@@ -78,7 +82,7 @@ public function fields()
 }
 
 // filter out some fields, best used when you want to inherit the parent implementation
-// and blacklist some sensitive fields.
+// and exclude some sensitive fields.
 public function fields()
 {
     $fields = parent::fields();
@@ -136,7 +140,7 @@ the request with `http://localhost/users?fields=id,email&expand=profile` may ret
 
 ## Links <span id="links"></span>
 
-[HATEOAS](http://en.wikipedia.org/wiki/HATEOAS), an abbreviation for Hypermedia as the Engine of Application State,
+[HATEOAS](https://en.wikipedia.org/wiki/HATEOAS), an abbreviation for Hypermedia as the Engine of Application State,
 promotes that RESTful APIs should return information that allows clients to discover actions supported for the returned
 resources. The key of HATEOAS is to return a set of hyperlinks with relation information when resource data are served
 by the APIs.
@@ -243,5 +247,7 @@ will also include the pagination information by the following HTTP headers:
 * `X-Pagination-Current-Page`: The current page (1-based);
 * `X-Pagination-Per-Page`: The number of resources in each page;
 * `Link`: A set of navigational links allowing client to traverse the resources page by page.
+
+Since collection in REST APIs is a data provider, it shares all data provider features i.e. pagination and sorting.
 
 An example may be found in the [Quick Start](rest-quick-start.md#trying-it-out) section.

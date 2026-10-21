@@ -1,12 +1,18 @@
 <?php
 
+/**
+ * @link https://www.yiiframework.com/
+ * @copyright Copyright (c) 2008 Yii Software LLC
+ * @license https://www.yiiframework.com/license/
+ */
+
 namespace yiiunit\framework\db\oci;
 
 use yii\db\oci\ColumnSchemaBuilder;
 use yii\db\Schema;
 
 /**
- * ColumnSchemaBuilderTest tests ColumnSchemaBuilder for Oracle
+ * ColumnSchemaBuilderTest tests ColumnSchemaBuilder for Oracle.
  * @group db
  * @group oci
  */
@@ -27,7 +33,7 @@ class ColumnSchemaBuilderTest extends \yiiunit\framework\db\ColumnSchemaBuilderT
     /**
      * @return array
      */
-    public function typesProvider()
+    public static function typesProvider(): array
     {
         return [
             ['integer UNSIGNED', Schema::TYPE_INTEGER, null, [

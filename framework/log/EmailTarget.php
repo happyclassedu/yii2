@@ -1,8 +1,9 @@
 <?php
+
 /**
- * @link http://www.yiiframework.com/
+ * @link https://www.yiiframework.com/
  * @copyright Copyright (c) 2008 Yii Software LLC
- * @license http://www.yiiframework.com/license/
+ * @license https://www.yiiframework.com/license/
  */
 
 namespace yii\log;
@@ -18,7 +19,7 @@ use yii\mail\MailerInterface;
  * You may configure the email to be sent by setting the [[message]] property, through which
  * you can set the target email addresses, subject, etc.:
  *
- * ```php
+ * ```
  * 'components' => [
  *     'log' => [
  *          'targets' => [
@@ -59,7 +60,7 @@ class EmailTarget extends Target
 
 
     /**
-     * @inheritdoc
+     * {@inheritdoc}
      */
     public function init()
     {
@@ -72,6 +73,8 @@ class EmailTarget extends Target
 
     /**
      * Sends log messages to specified email addresses.
+     * Starting from version 2.0.14, this method throws LogRuntimeException in case the log can not be exported.
+     * @throws LogRuntimeException
      */
     public function export()
     {
@@ -82,7 +85,10 @@ class EmailTarget extends Target
         }
         $messages = array_map([$this, 'formatMessage'], $this->messages);
         $body = wordwrap(implode("\n", $messages), 70);
-        $this->composeMessage($body)->send($this->mailer);
+        $message = $this->composeMessage($body);
+        if (!$message->send($this->mailer)) {
+            throw new LogRuntimeException('Unable to export log through email!');
+        }
     }
 
     /**

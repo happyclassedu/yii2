@@ -43,7 +43,7 @@ git clone git@github.com:yiisoft/yii2-app-basic.git
 ----------------
 
 З визначенням шаблону, створіть Git репозиторій та завантажте туди свої файли. Якщо ви, збираєтесь використовувати свій шаблон,
-як *open source*, то [Github](http://github.com) є кращим місцем для його розташування.
+як *open source*, то [Github](https://github.com) є кращим місцем для його розташування.
 Якщо ви не бажаєте публічно розміщувати свій шаблон, то підійде будь-який сайт сервісу Git.
 
 Далі, вам необхідно зареєструвати свій Composer пакет. Для публічних шаблонів, ваш пакет необхідно зареєструвати 
@@ -57,6 +57,6 @@ git clone git@github.com:yiisoft/yii2-app-basic.git
 Тепер ви можете створювати проекти, використовуючи свій шаблон:
 
 ```
-composer global require "fxp/composer-asset-plugin:^1.2.0"
+composer global require "fxp/composer-asset-plugin:^1.4.1"
 composer create-project --prefer-dist --stability=dev mysoft/yii2-app-coolone new-project
 ```

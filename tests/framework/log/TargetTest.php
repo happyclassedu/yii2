@@ -1,6 +1,9 @@
 <?php
+
 /**
- * @author Carsten Brandt <mail@cebe.cc>
+ * @link https://www.yiiframework.com/
+ * @copyright Copyright (c) 2008 Yii Software LLC
+ * @license https://www.yiiframework.com/license/
  */
 
 namespace yiiunit\framework\log;
@@ -17,20 +20,20 @@ class TargetTest extends TestCase
 {
     public static $messages;
 
-    public function filters()
+    public static function filters(): array
     {
         return [
-            [[], ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H']],
+            [[], ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I']],
 
-            [['levels' => 0], ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H']],
+            [['levels' => 0], ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I']],
             [
                 ['levels' => Logger::LEVEL_INFO | Logger::LEVEL_WARNING | Logger::LEVEL_ERROR | Logger::LEVEL_TRACE],
-                ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H']
+                ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I'],
             ],
-            [['levels' => ['error']], ['B', 'G', 'H']],
-            [['levels' => Logger::LEVEL_ERROR], ['B', 'G', 'H']],
-            [['levels' => ['error', 'warning']], ['B', 'C', 'G', 'H']],
-            [['levels' => Logger::LEVEL_ERROR | Logger::LEVEL_WARNING], ['B', 'C', 'G', 'H']],
+            [['levels' => ['error']], ['B', 'G', 'H', 'I']],
+            [['levels' => Logger::LEVEL_ERROR], ['B', 'G', 'H', 'I']],
+            [['levels' => ['error', 'warning']], ['B', 'C', 'G', 'H', 'I']],
+            [['levels' => Logger::LEVEL_ERROR | Logger::LEVEL_WARNING], ['B', 'C', 'G', 'H', 'I']],
 
             [['categories' => ['application']], ['A', 'B', 'C', 'D', 'E']],
             [['categories' => ['application*']], ['A', 'B', 'C', 'D', 'E', 'F']],
@@ -39,7 +42,9 @@ class TargetTest extends TestCase
             [['categories' => ['application.components.Test']], ['F']],
             [['categories' => ['application.components.*']], ['F']],
             [['categories' => ['application.*', 'yii.db.*']], ['F', 'G', 'H']],
-            [['categories' => ['application.*', 'yii.db.*'], 'except' => ['yii.db.Command.*']], ['F', 'G']],
+            [['categories' => ['application.*', 'yii.db.*'], 'except' => ['yii.db.Command.*', 'yii\db\*']], ['F', 'G']],
+            [['except' => ['yii\db\*']], ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H']],
+            [['categories' => ['yii*'], 'except' => ['yii\db\*']], ['G', 'H']],
 
             [['categories' => ['application', 'yii.db.*'], 'levels' => Logger::LEVEL_ERROR], ['B', 'G', 'H']],
             [['categories' => ['application'], 'levels' => Logger::LEVEL_ERROR], ['B']],
@@ -49,12 +54,14 @@ class TargetTest extends TestCase
 
     /**
      * @dataProvider filters
+     * @param array $filter
+     * @param array $expected
      */
-    public function testFilter($filter, $expected)
+    public function testFilter($filter, $expected): void
     {
         static::$messages = [];
 
-        $logger = new Logger;
+        $logger = new Logger();
         $dispatcher = new Dispatcher([
             'logger' => $logger,
             'targets' => [new TestTarget(array_merge($filter, ['logVars' => []]))],
@@ -68,15 +75,21 @@ class TargetTest extends TestCase
         $logger->log('testF', Logger::LEVEL_INFO, 'application.components.Test');
         $logger->log('testG', Logger::LEVEL_ERROR, 'yii.db.Command');
         $logger->log('testH', Logger::LEVEL_ERROR, 'yii.db.Command.whatever');
+        $logger->log('testI', Logger::LEVEL_ERROR, 'yii\db\Command::query');
 
-        $this->assertEquals(count($expected), count(static::$messages));
+        $messageColumn = [];
+        foreach (static::$messages as $message) {
+            $messageColumn[] = $message[0];
+        }
+
+        $this->assertEquals(count($expected), count(static::$messages), 'Expected ' . implode(',', $expected) . ', got ' . implode(',', $messageColumn));
         $i = 0;
         foreach ($expected as $e) {
             $this->assertEquals('test' . $e, static::$messages[$i++][0]);
         }
     }
 
-    public function testGetContextMessage()
+    public function testGetContextMessage(): void
     {
         $target = new TestTarget([
             'logVars' => [
@@ -85,6 +98,10 @@ class TargetTest extends TestCase
                 'C', 'C.C_a',
                 'D',
             ],
+            'maskVars' => [
+                'C.C_b',
+                'D.D_a'
+            ]
         ]);
         $GLOBALS['A'] = [
             'A_a' => 1,
@@ -98,7 +115,7 @@ class TargetTest extends TestCase
         ];
         $GLOBALS['C'] = [
             'C_a' => 1,
-            'C_b' => 1,
+            'C_b' => 'mySecret',
             'C_c' => 1,
         ];
         $GLOBALS['E'] = [
@@ -107,30 +124,32 @@ class TargetTest extends TestCase
             'C_c' => 1,
         ];
         $context = $target->getContextMessage();
-        $this->assertContains('A_a', $context);
-        $this->assertNotContains('A_b', $context);
-        $this->assertContains('A_c', $context);
-        $this->assertContains('B_a', $context);
-        $this->assertNotContains('B_b', $context);
-        $this->assertNotContains('B_c', $context);
-        $this->assertContains('C_a', $context);
-        $this->assertContains('C_b', $context);
-        $this->assertContains('C_c', $context);
-        $this->assertNotContains('D_a', $context);
-        $this->assertNotContains('D_b', $context);
-        $this->assertNotContains('D_c', $context);
-        $this->assertNotContains('E_a', $context);
-        $this->assertNotContains('E_b', $context);
-        $this->assertNotContains('E_c', $context);
+        $this->assertStringContainsString('A_a', $context);
+        $this->assertStringNotContainsString('A_b', $context);
+        $this->assertStringContainsString('A_c', $context);
+        $this->assertStringContainsString('B_a', $context);
+        $this->assertStringNotContainsString('B_b', $context);
+        $this->assertStringNotContainsString('B_c', $context);
+        $this->assertStringContainsString('C_a', $context);
+        $this->assertStringContainsString('C_b', $context);
+        $this->assertStringContainsString('C_c', $context);
+        $this->assertStringNotContainsString('D_a', $context);
+        $this->assertStringNotContainsString('D_b', $context);
+        $this->assertStringNotContainsString('D_c', $context);
+        $this->assertStringNotContainsString('E_a', $context);
+        $this->assertStringNotContainsString('E_b', $context);
+        $this->assertStringNotContainsString('E_c', $context);
+        $this->assertStringNotContainsString('mySecret', $context);
+        $this->assertStringContainsString('***', $context);
     }
 
     /**
      * @covers \yii\log\Target::setLevels()
      * @covers \yii\log\Target::getLevels()
      */
-    public function testSetupLevelsThroughArray()
+    public function testSetupLevelsThroughArray(): void
     {
-        $target = $this->getMockForAbstractClass('yii\\log\\Target');
+        $target = $this->getMockForAbstractClass(Target::class);
 
         $target->setLevels(['info', 'error']);
         $this->assertEquals(Logger::LEVEL_INFO | Logger::LEVEL_ERROR, $target->getLevels());
@@ -138,7 +157,8 @@ class TargetTest extends TestCase
         $target->setLevels(['trace']);
         $this->assertEquals(Logger::LEVEL_TRACE, $target->getLevels());
 
-        $this->setExpectedException('yii\\base\\InvalidConfigException', 'Unrecognized level: unknown level');
+        $this->expectException('yii\\base\\InvalidConfigException');
+        $this->expectExceptionMessage('Unrecognized level: unknown level');
         $target->setLevels(['info', 'unknown level']);
     }
 
@@ -146,9 +166,9 @@ class TargetTest extends TestCase
      * @covers \yii\log\Target::setLevels()
      * @covers \yii\log\Target::getLevels()
      */
-    public function testSetupLevelsThroughBitmap()
+    public function testSetupLevelsThroughBitmap(): void
     {
-        $target = $this->getMockForAbstractClass('yii\\log\\Target');
+        $target = $this->getMockForAbstractClass(Target::class);
 
         $target->setLevels(Logger::LEVEL_INFO | Logger::LEVEL_WARNING);
         $this->assertEquals(Logger::LEVEL_INFO | Logger::LEVEL_WARNING, $target->getLevels());
@@ -156,11 +176,235 @@ class TargetTest extends TestCase
         $target->setLevels(Logger::LEVEL_TRACE);
         $this->assertEquals(Logger::LEVEL_TRACE, $target->getLevels());
 
-        $this->setExpectedException('yii\\base\\InvalidConfigException', 'Incorrect 128 value');
+        $this->expectException('yii\\base\\InvalidConfigException');
+        $this->expectExceptionMessage('Incorrect 128 value');
         $target->setLevels(128);
+    }
+
+    public function testGetEnabled(): void
+    {
+        $target = $this->getMockForAbstractClass(Target::class);
+
+        $target->enabled = true;
+        $this->assertTrue($target->enabled);
+
+        $target->enabled = false;
+        $this->assertFalse($target->enabled);
+
+        $target->enabled = function ($target) {
+            return empty($target->messages);
+        };
+        $this->assertTrue($target->enabled);
+    }
+
+    public function testFormatMessage(): void
+    {
+        $target = $this->getMockForAbstractClass(Target::class);
+
+        date_default_timezone_set('UTC');
+
+        $text = 'message';
+        $level = Logger::LEVEL_INFO;
+        $category = 'application';
+        $timestamp = 1508160390.6083;
+
+        $expectedWithoutMicro = '2017-10-16 13:26:30 [info][application] message';
+        $formatted = $target->formatMessage([$text, $level, $category, $timestamp]);
+        $this->assertSame($expectedWithoutMicro, $formatted);
+
+        $target->microtime = true;
+
+        $expectedWithMicro = '2017-10-16 13:26:30.608300 [info][application] message';
+        $formatted = $target->formatMessage([$text, $level, $category, $timestamp]);
+        $this->assertSame($expectedWithMicro, $formatted);
+
+        $timestamp = 1508160390;
+
+        $expectedWithMicro = '2017-10-16 13:26:30.000000 [info][application] message';
+        $formatted = $target->formatMessage([$text, $level, $category, $timestamp]);
+        $this->assertSame($expectedWithMicro, $formatted);
+    }
+
+    public function testCollectMessageStructure(): void
+    {
+        $target = new TestTarget(['logVars' => ['_SERVER']]);
+        static::$messages = [];
+
+        $messages = [
+            ['test', 1, 'application', 1560428356.212978, [], 1888416]
+        ];
+
+        $target->collect($messages, false);
+
+        $this->assertCount(2, static::$messages);
+        $this->assertCount(6, static::$messages[0]);
+        $this->assertCount(6, static::$messages[1]);
+    }
+
+    public function testBreakProfilingWithFlushWithProfilingDisabled(): void
+    {
+        $dispatcher = $this->createPartialMock('yii\log\Dispatcher', ['dispatch']);
+        $dispatcher->expects($this->once())->method('dispatch')->with($this->callback(function ($messages) {
+            return count($messages) === 2
+                && $messages[0][0] === 'token.a'
+                && $messages[0][1] == Logger::LEVEL_PROFILE_BEGIN
+                && $messages[1][0] === 'info';
+        }), false);
+
+        $logger = new Logger([
+            'dispatcher' => $dispatcher,
+            'flushInterval' => 2,
+        ]);
+
+        $logger->log('token.a', Logger::LEVEL_PROFILE_BEGIN, 'category');
+        $logger->log('info', Logger::LEVEL_INFO, 'category');
+        $logger->log('token.a', Logger::LEVEL_PROFILE_END, 'category');
+    }
+
+    public function testNotBreakProfilingWithFlushWithProfilingEnabled(): void
+    {
+        $dispatcher = $this->createPartialMock(Dispatcher::class, ['dispatch']);
+
+        /**
+         * @link https://github.com/sebastianbergmann/phpunit/issues/5063
+         */
+        $matcher = $this->exactly(2);
+        $dispatcher
+            ->expects($matcher)
+            ->method('dispatch')
+            ->willReturnCallback(
+                function (...$parameters) use ($matcher): void {
+                    if ($matcher->getInvocationCount() === 1) {
+                        $callback = fn ($messages): bool => count($messages) === 1 && $messages[0][0] === 'info';
+
+                        $this->assertTrue($callback($parameters[0]));
+                        $this->assertFalse($parameters[1]);
+                    }
+
+                    if ($matcher->getInvocationCount() === 2) {
+                        $callback = fn ($messages): bool => count($messages) === 2
+                            && $messages[0][0] === 'token.a'
+                            && $messages[0][1] === Logger::LEVEL_PROFILE_BEGIN
+                            && $messages[1][0] === 'token.a'
+                            && $messages[1][1] === Logger::LEVEL_PROFILE_END;
+
+                        $this->assertTrue($callback($parameters[0]));
+                        $this->assertFalse($parameters[1]);
+                    }
+                },
+            );
+
+        $logger = new Logger([
+            'profilingAware' => true,
+            'dispatcher' => $dispatcher,
+            'flushInterval' => 2,
+        ]);
+
+        $logger->log('token.a', Logger::LEVEL_PROFILE_BEGIN, 'category');
+        $logger->log('info', Logger::LEVEL_INFO, 'category');
+        $logger->log('token.a', Logger::LEVEL_PROFILE_END, 'category');
+    }
+
+    public function testFlushingWithProfilingEnabledAndOverflow(): void
+    {
+        $dispatcher = $this->createPartialMock(Dispatcher::class, ['dispatch']);
+
+        /**
+         * @link https://github.com/sebastianbergmann/phpunit/issues/5063
+         */
+        $matcher = $this->exactly(3);
+        $dispatcher
+            ->expects($matcher)
+            ->method('dispatch')
+            ->willReturnCallback(
+                function (...$parameters) use ($matcher): void {
+                    if ($matcher->getInvocationCount() === 1) {
+                        $callback = fn ($messages): bool => count($messages) === 2
+                            && $messages[0][0] === 'token.a'
+                            && $messages[0][1] === Logger::LEVEL_PROFILE_BEGIN
+                            && $messages[1][0] === 'token.b'
+                            && $messages[1][1] === Logger::LEVEL_PROFILE_BEGIN;
+
+                        $this->assertTrue($callback($parameters[0]));
+                        $this->assertFalse($parameters[1]);
+                    }
+
+                    if ($matcher->getInvocationCount() === 2) {
+                        $callback = fn ($messages): bool => count($messages) === 1
+                            && $messages[0][0] === 'Number of dangling profiling block messages reached flushInterval value and therefore these were flushed. Please consider setting higher flushInterval value or making profiling blocks shorter.';
+
+                        $this->assertTrue($callback($parameters[0]));
+                        $this->assertFalse($parameters[1]);
+                    }
+
+                    if ($matcher->getInvocationCount() === 3) {
+                        $callback = fn ($messages): bool => count($messages) === 2
+                            && $messages[0][0] === 'token.b'
+                            && $messages[0][1] === Logger::LEVEL_PROFILE_END
+                            && $messages[1][0] === 'token.a'
+                            && $messages[1][1] === Logger::LEVEL_PROFILE_END;
+
+                        $this->assertTrue($callback($parameters[0]));
+                        $this->assertFalse($parameters[1]);
+                    }
+                },
+            );
+
+        $logger = new Logger([
+            'profilingAware' => true,
+            'dispatcher' => $dispatcher,
+            'flushInterval' => 2,
+        ]);
+
+        $logger->log('token.a', Logger::LEVEL_PROFILE_BEGIN, 'category');
+        $logger->log('token.b', Logger::LEVEL_PROFILE_BEGIN, 'category');
+        $logger->log('token.b', Logger::LEVEL_PROFILE_END, 'category');
+        $logger->log('token.a', Logger::LEVEL_PROFILE_END, 'category');
+    }
+
+    public function testWildcardsInMaskVars(): void
+    {
+        $keys = [
+            'PASSWORD',
+            'password',
+            'password_repeat',
+            'repeat_password',
+            'repeat_password_again',
+            '1password',
+            'password1',
+        ];
+
+        $password = '!P@$$w0rd#';
+
+        $items = array_fill_keys($keys, $password);
+
+        $GLOBALS['_TEST'] = array_merge(
+            $items,
+            ['a' => $items],
+            ['b' => ['c' => $items]],
+            ['d' => ['e' => ['f' => $items]]],
+        );
+
+        $target = new TestTarget([
+            'logVars' => ['_SERVER', '_TEST'],
+            'maskVars' => [
+                // option 1: exact value(s)
+                '_SERVER.DOCUMENT_ROOT',
+                // option 2: pattern(s)
+                '_TEST.*password*',
+            ]
+        ]);
+
+        $message = $target->getContextMessage();
+
+        $this->assertStringContainsString("'DOCUMENT_ROOT' => '***'", $message);
+        $this->assertStringNotContainsString($password, $message);
     }
 }
 
+/**
+ * @property-read string $contextMessage The context information. If an empty string, it means no context information.
+ */
 class TestTarget extends Target
 {
     public $exportInterval = 1;
@@ -169,14 +413,14 @@ class TestTarget extends Target
      * Exports log [[messages]] to a specific destination.
      * Child classes must implement this method.
      */
-    public function export()
+    public function export(): void
     {
         TargetTest::$messages = array_merge(TargetTest::$messages, $this->messages);
         $this->messages = [];
     }
 
     /**
-     * @inheritdoc
+     * {@inheritdoc}
      */
     public function getContextMessage()
     {

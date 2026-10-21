@@ -8,7 +8,7 @@ var vm = require('vm');
 
 describe('yii.captcha', function () {
     var yiiCaptchaPath = 'framework/assets/yii.captcha.js';
-    var jQueryPath = 'vendor/bower/jquery/dist/jquery.js';
+    var jQueryPath = 'vendor/bower-asset/jquery/dist/jquery.js';
     var $;
     var $captcha;
     var settings = {
@@ -30,7 +30,8 @@ describe('yii.captcha', function () {
 
     jsdom({
         html: html,
-        src: fs.readFileSync(jQueryPath, 'utf-8')
+        src: fs.readFileSync(jQueryPath, 'utf-8'),
+        url: "http://foo.bar"
     });
 
     before(function () {

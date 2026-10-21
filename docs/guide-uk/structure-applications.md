@@ -19,11 +19,11 @@
 [конфігурацію](concept-configurations.md) та застосує її до додатка, наприклад:
 
 ```php
-require(__DIR__ . '/../vendor/autoload.php');
-require(__DIR__ . '/../vendor/yiisoft/yii2/Yii.php');
+require __DIR__ . '/../vendor/autoload.php';
+require __DIR__ . '/../vendor/yiisoft/yii2/Yii.php';
 
 // завантаження конфігурації додатка
-$config = require(__DIR__ . '/../config/web.php');
+$config = require __DIR__ . '/../config/web.php';
 
 // створення екземпляру додатка і його налаштування
 (new yii\web\Application($config))->run();
@@ -274,7 +274,7 @@ Yii встановлює відповідність між ідентифіка�
 використовує значення даної властивості для визначення мови, на якій має бути зображений календар і який
 формат дати повинен бути.
 
-Рекомендується вказувати мову у рамках стандарту [IETF](http://en.wikipedia.org/wiki/IETF_language_tag).
+Рекомендується вказувати мову у рамках стандарту [IETF](https://en.wikipedia.org/wiki/IETF_language_tag).
 Наприклад, для англійської мови використовується `en`, в той час як для англійської в США - `en-US`.
 
 Більш детальна інформація про цю властивість може бути знайдена у розділі [Інтернаціоналізація](tutorial-i18n.md).
@@ -346,7 +346,7 @@ $width = \Yii::$app->params['thumbnail.size'][0];
 є не англійська мова.
 
 Аналогічно властивості [language](#language), ви повинні вказати дану властивість у рамках стандарту 
-[IETF](http://en.wikipedia.org/wiki/IETF_language_tag). Наприклад, для англійської мови 
+[IETF](https://en.wikipedia.org/wiki/IETF_language_tag). Наприклад, для англійської мови 
 використовується `en`, в той час як для англійської в США - `en-US`.
 
 Більш детальна інформація про цю властивість може бути знайдена у розділі [Інтернаціоналізація](tutorial-i18n.md).
@@ -356,7 +356,7 @@ $width = \Yii::$app->params['thumbnail.size'][0];
 
 Дана властивість надає альтернативний спосіб встановлення часової зони за замовчуванням у процесі роботи додатка.
 Таким чином, вказуючи дану властивість, ви, по суті, викликаєте PHP-функцію 
-[date_default_timezone_set()](http://php.net/manual/en/function.date-default-timezone-set.php). Наприклад,
+[date_default_timezone_set()](https://www.php.net/manual/en/function.date-default-timezone-set.php). Наприклад,
 
 ```php
 [

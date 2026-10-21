@@ -1,13 +1,15 @@
 <?php
+
 /**
- * @link http://www.yiiframework.com/
+ * @link https://www.yiiframework.com/
  * @copyright Copyright (c) 2008 Yii Software LLC
- * @license http://www.yiiframework.com/license/
+ * @license https://www.yiiframework.com/license/
  */
 
 namespace yii\validators;
 
 use Yii;
+use yii\helpers\Json;
 
 /**
  * BooleanValidator checks if the attribute value is a boolean value.
@@ -37,7 +39,7 @@ class BooleanValidator extends Validator
 
 
     /**
-     * @inheritdoc
+     * {@inheritdoc}
      */
     public function init()
     {
@@ -48,12 +50,15 @@ class BooleanValidator extends Validator
     }
 
     /**
-     * @inheritdoc
+     * {@inheritdoc}
      */
     protected function validateValue($value)
     {
-        $valid = !$this->strict && ($value == $this->trueValue || $value == $this->falseValue)
-                 || $this->strict && ($value === $this->trueValue || $value === $this->falseValue);
+        if ($this->strict) {
+            $valid = $value === $this->trueValue || $value === $this->falseValue;
+        } else {
+            $valid = $value == $this->trueValue || $value == $this->falseValue;
+        }
 
         if (!$valid) {
             return [$this->message, [
@@ -66,29 +71,29 @@ class BooleanValidator extends Validator
     }
 
     /**
-     * @inheritdoc
+     * {@inheritdoc}
      */
     public function clientValidateAttribute($model, $attribute, $view)
     {
         ValidationAsset::register($view);
         $options = $this->getClientOptions($model, $attribute);
 
-        return 'yii.validation.boolean(value, messages, ' . json_encode($options, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) . ');';
+        return 'yii.validation.boolean(value, messages, ' . Json::htmlEncode($options) . ');';
     }
 
     /**
-     * @inheritdoc
+     * {@inheritdoc}
      */
     public function getClientOptions($model, $attribute)
     {
         $options = [
             'trueValue' => $this->trueValue,
             'falseValue' => $this->falseValue,
-            'message' => Yii::$app->getI18n()->format($this->message, [
+            'message' => $this->formatMessage($this->message, [
                 'attribute' => $model->getAttributeLabel($attribute),
                 'true' => $this->trueValue === true ? 'true' : $this->trueValue,
                 'false' => $this->falseValue === false ? 'false' : $this->falseValue,
-            ], Yii::$app->language),
+            ]),
         ];
         if ($this->skipOnEmpty) {
             $options['skipOnEmpty'] = 1;

@@ -1,11 +1,17 @@
 <?php
 
+/**
+ * @link https://www.yiiframework.com/
+ * @copyright Copyright (c) 2008 Yii Software LLC
+ * @license https://www.yiiframework.com/license/
+ */
+
 namespace yiiunit\framework\rbac;
 
 use yii\rbac\Rule;
 
 /**
- * Description of ActionRule
+ * Description of ActionRule.
  */
 class ActionRule extends Rule
 {

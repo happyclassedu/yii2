@@ -1,12 +1,23 @@
 <?php
 
+/**
+ * @link https://www.yiiframework.com/
+ * @copyright Copyright (c) 2008 Yii Software LLC
+ * @license https://www.yiiframework.com/license/
+ */
+
+declare(strict_types=1);
+
 namespace yiiunit\framework\behaviors;
 
+use ValueError;
 use Yii;
 use yii\base\DynamicModel;
-use yiiunit\TestCase;
-use yii\db\ActiveRecord;
+use yii\base\Event;
 use yii\behaviors\AttributeTypecastBehavior;
+use yii\db\ActiveRecord;
+use yiiunit\framework\db\enums\StatusTypeString;
+use yiiunit\TestCase;
 
 /**
  * Unit test for [[\yii\behaviors\AttributeTypecastBehavior]].
@@ -16,22 +27,22 @@ use yii\behaviors\AttributeTypecastBehavior;
  */
 class AttributeTypecastBehaviorTest extends TestCase
 {
-    public static function setUpBeforeClass()
+    public static function setUpBeforeClass(): void
     {
         if (!extension_loaded('pdo') || !extension_loaded('pdo_sqlite')) {
             static::markTestSkipped('PDO and SQLite extensions are required.');
         }
     }
 
-    protected function setUp()
+    protected function setUp(): void
     {
         $this->mockApplication([
             'components' => [
                 'db' => [
                     'class' => '\yii\db\Connection',
                     'dsn' => 'sqlite::memory:',
-                ]
-            ]
+                ],
+            ],
         ]);
 
         $columns = [
@@ -41,19 +52,22 @@ class AttributeTypecastBehaviorTest extends TestCase
             'price' => 'float',
             'isActive' => 'boolean',
             'callback' => 'string',
+            'status' => 'string',
         ];
         Yii::$app->getDb()->createCommand()->createTable('test_attribute_typecast', $columns)->execute();
     }
 
-    protected function tearDown()
+    protected function tearDown(): void
     {
         parent::tearDown();
         AttributeTypecastBehavior::clearAutoDetectedAttributeTypes();
+        gc_enable();
+        gc_collect_cycles();
     }
 
     // Tests :
 
-    public function testTypecast()
+    public function testTypecast(): void
     {
         $model = new ActiveRecordAttributeTypecast();
 
@@ -68,14 +82,63 @@ class AttributeTypecastBehaviorTest extends TestCase
         $this->assertSame('123', $model->name);
         $this->assertSame(58, $model->amount);
         $this->assertSame(100.8, $model->price);
-        $this->assertSame(true, $model->isActive);
+        $this->assertTrue($model->isActive);
         $this->assertSame('callback: foo', $model->callback);
+    }
+
+    public function testTypecastEnum(): void
+    {
+        if (PHP_VERSION_ID < 80100) {
+            $this->markTestSkipped('Can not be tested on PHP < 8.1');
+        }
+
+        $model = new ActiveRecordAttributeTypecastWithEnum();
+
+        $model->status = StatusTypeString::Active;
+
+        $model->getAttributeTypecastBehavior()->typecastAttributes();
+
+        $this->assertSame(StatusTypeString::Active, $model->status);
+    }
+
+    /**
+     * @depends testTypecastEnum
+     */
+    public function testTypecastEnumFromString(): void
+    {
+        if (PHP_VERSION_ID < 80100) {
+            $this->markTestSkipped('Can not be tested on PHP < 8.1');
+        }
+
+        $model = new ActiveRecordAttributeTypecastWithEnum();
+        $model->status = 'active'; // Same as StatusTypeString::ACTIVE->value;
+
+        $model->getAttributeTypecastBehavior()->typecastAttributes();
+
+        $this->assertSame(StatusTypeString::Active, $model->status);
+    }
+
+    /**
+     * @depends testTypecastEnum
+     */
+    public function testTypecastEnumFailWithInvalidValue(): void
+    {
+        if (PHP_VERSION_ID < 80100) {
+            $this->markTestSkipped('Can not be tested on PHP < 8.1');
+        }
+
+        $model = new ActiveRecordAttributeTypecastWithEnum();
+        $model->status = 'invalid';
+
+        self::expectException(ValueError::class);
+
+        $model->getAttributeTypecastBehavior()->typecastAttributes();
     }
 
     /**
      * @depends testTypecast
      */
-    public function testSkipNull()
+    public function testSkipNull(): void
     {
         $model = new ActiveRecordAttributeTypecast();
         $model->getAttributeTypecastBehavior()->skipOnNull = true;
@@ -100,41 +163,133 @@ class AttributeTypecastBehaviorTest extends TestCase
         $this->assertSame('', $model->name);
         $this->assertSame(0, $model->amount);
         $this->assertSame(0.0, $model->price);
-        $this->assertSame(false, $model->isActive);
+        $this->assertFalse($model->isActive);
         $this->assertSame('callback: ', $model->callback);
     }
 
     /**
      * @depends testTypecast
      */
-    public function testEvents()
+    public function testAfterFindEvent(): void
     {
         $model = new ActiveRecordAttributeTypecast();
 
-        $model->callback = 'validate';
         $model->validate();
-        $this->assertSame('callback: validate', $model->callback);
-
-        $model->callback = 'insert';
         $model->save(false);
-        $this->assertSame('callback: insert', $model->callback);
-
-        $model->callback = 'update';
-        $model->save(false);
-        $this->assertSame('callback: update', $model->callback);
 
         $model->updateAll(['callback' => 'find']);
         $model->refresh();
         $this->assertSame('callback: find', $model->callback);
     }
 
-    public function testAutoDetectAttributeTypes()
+    /**
+     * @see https://github.com/yiisoft/yii2/issues/17194
+     */
+    public function testDirtyAttributesAreEmptyAfterFind(): void
+    {
+        $model = new ActiveRecordAttributeTypecast();
+        $model->name = 123;
+        $model->amount = '58';
+        $model->price = '100.8';
+        $model->isActive = 1;
+        $model->callback = 'foo';
+        $model->save(false);
+
+        $model = ActiveRecordAttributeTypecast::find()->one();
+
+        $this->assertEmpty($model->getDirtyAttributes());
+    }
+
+    /**
+     * @depends testTypecast
+     */
+    public function testAfterValidateEvent(): void
+    {
+        $model = new ActiveRecordAttributeTypecast();
+
+        $model->callback = 'validate';
+        $model->validate();
+        $this->assertSame('callback: validate', $model->callback);
+    }
+
+    /**
+     * @depends testTypecast
+     */
+    public function testBeforeSaveEvent(): void
+    {
+        $model = new ActiveRecordAttributeTypecast();
+
+        $beforeInsertHappened = false;
+        $model->callback = 'insert';
+        $model->on(ActiveRecordAttributeTypecast::EVENT_BEFORE_INSERT, function (Event $event) use (&$beforeInsertHappened) {
+            $beforeInsertHappened = true;
+        });
+        $model->save(false);
+        $this->assertSame('callback: insert', $model->callback);
+        $this->assertTrue($beforeInsertHappened);
+        $beforeInsertHappened = false;
+
+        $beforeUpdateHappened = false;
+        $model->callback = 'update';
+        $model->on(ActiveRecordAttributeTypecast::EVENT_BEFORE_UPDATE, function (Event $event) use (&$beforeUpdateHappened) {
+            $beforeUpdateHappened = true;
+        });
+        $model->save(false);
+        $this->assertSame('callback: update', $model->callback);
+        $this->assertTrue($beforeUpdateHappened);
+        $this->assertFalse($beforeInsertHappened);
+    }
+
+    /**
+     * @depends testTypecast
+     */
+    public function testAfterSaveEvent(): void
+    {
+        $model = new ActiveRecordAttributeTypecast([
+            'typecastAfterSave' => true
+        ]);
+
+        $model->callback = 'insert';
+
+        $beforeInsertHappened = false;
+        $model->on(ActiveRecordAttributeTypecast::EVENT_BEFORE_INSERT, function (Event $event) use (&$beforeInsertHappened) {
+            $beforeInsertHappened = true;
+        });
+        $afterInsertHappened = false;
+        $model->on(ActiveRecordAttributeTypecast::EVENT_AFTER_INSERT, function (Event $event) use (&$afterInsertHappened) {
+            $afterInsertHappened = true;
+        });
+        $model->save(false);
+        $this->assertTrue($beforeInsertHappened);
+        $this->assertTrue($afterInsertHappened);
+        $this->assertSame('callback: callback: insert', $model->callback);
+        $beforeInsertHappened = $afterInsertHappened = false;
+
+
+        $model->callback = 'update';
+        $beforeUpdateHappened = false;
+        $model->on(ActiveRecordAttributeTypecast::EVENT_BEFORE_UPDATE, function (Event $event) use (&$beforeUpdateHappened) {
+            $beforeUpdateHappened = true;
+        });
+        $afterUpdateHappened = false;
+        $model->on(ActiveRecordAttributeTypecast::EVENT_AFTER_UPDATE, function (Event $event) use (&$afterUpdateHappened) {
+            $afterUpdateHappened = true;
+        });
+        $model->save(false);
+        $this->assertSame('callback: callback: update', $model->callback);
+        $this->assertTrue($beforeUpdateHappened);
+        $this->assertTrue($afterUpdateHappened);
+        $this->assertFalse($beforeInsertHappened);
+        $this->assertFalse($afterInsertHappened);
+    }
+
+    public function testAutoDetectAttributeTypes(): void
     {
         $model = (new DynamicModel(['name' => null, 'amount' => null, 'price' => null, 'isActive' => null]))
             ->addRule('name', 'string')
             ->addRule('amount', 'integer')
             ->addRule('price', 'number')
-            ->addRule('isActive', 'boolean');
+            ->addRule('!isActive', 'boolean');
 
         $behavior = new AttributeTypecastBehavior();
 
@@ -150,11 +305,41 @@ class AttributeTypecastBehaviorTest extends TestCase
     }
 
     /**
+     * @depends testAutoDetectAttributeTypes
+     *
+     * @see https://github.com/yiisoft/yii2/issues/19865
+     */
+    public function testAutoDetectAttributeTypesSkipsConditionalRules(): void
+    {
+        $condition = function () {
+            return true;
+        };
+
+        $model = (new DynamicModel(['name' => null, 'amount' => null, 'price' => null]))
+            ->addRule('name', 'string')
+            ->addRule('amount', 'integer', ['when' => $condition])
+            ->addRule('amount', 'string', ['when' => $condition])
+            ->addRule('price', 'number', ['when' => $condition])
+            ->addRule('price', 'string');
+
+        $behavior = new AttributeTypecastBehavior();
+
+        $behavior->attach($model);
+
+        $expectedAttributeTypes = [
+            'name' => AttributeTypecastBehavior::TYPE_STRING,
+            // 'amount' is covered by conditional rules only, so its type can not be detected
+            'price' => AttributeTypecastBehavior::TYPE_STRING,
+        ];
+        $this->assertEquals($expectedAttributeTypes, $behavior->attributeTypes);
+    }
+
+    /**
      * @depends testSkipNull
      *
      * @see https://github.com/yiisoft/yii2/issues/12880
      */
-    public function testSkipNotSelectedAttribute()
+    public function testSkipNotSelectedAttribute(): void
     {
         $model = new ActiveRecordAttributeTypecast();
         $model->name = 'skip-not-selected';
@@ -164,7 +349,7 @@ class AttributeTypecastBehaviorTest extends TestCase
         $model->callback = 'foo';
         $model->save(false);
 
-        /* @var $model ActiveRecordAttributeTypecast */
+        /** @var ActiveRecordAttributeTypecast $model */
         $model = ActiveRecordAttributeTypecast::find()
             ->select(['id', 'name'])
             ->limit(1)
@@ -174,7 +359,7 @@ class AttributeTypecastBehaviorTest extends TestCase
         $model->save(false);
 
         $model->refresh();
-        $this->assertEquals('58', $model->amount);
+        $this->assertSame(58, $model->amount);
     }
 }
 
@@ -182,21 +367,25 @@ class AttributeTypecastBehaviorTest extends TestCase
  * Test Active Record class with [[AttributeTypecastBehavior]] behavior attached.
  *
  * @property int $id
- * @property string $name
- * @property int $amount
- * @property float $price
- * @property bool $isActive
- * @property string $callback
+ * @property string|int|null $name
+ * @property int|string|null $amount
+ * @property float|string|null $price
+ * @property bool|int|null $isActive
+ * @property string|null $callback
  *
- * @property AttributeTypecastBehavior $attributeTypecastBehavior
+ * @property-read AttributeTypecastBehavior $attributeTypecastBehavior
+ *
+ * @mixin AttributeTypecastBehavior
  */
 class ActiveRecordAttributeTypecast extends ActiveRecord
 {
+    public $typecastAfterSave = false;
+
     public function behaviors()
     {
         return [
             'attributeTypecast' => [
-                'class' => AttributeTypecastBehavior::className(),
+                'class' => AttributeTypecastBehavior::class,
                 'attributeTypes' => [
                     'name' => AttributeTypecastBehavior::TYPE_STRING,
                     'amount' => AttributeTypecastBehavior::TYPE_INTEGER,
@@ -209,6 +398,7 @@ class ActiveRecordAttributeTypecast extends ActiveRecord
                 'typecastAfterValidate' => true,
                 'typecastBeforeSave' => true,
                 'typecastAfterFind' => true,
+                'typecastAfterSave' => $this->typecastAfterSave,
             ],
         ];
     }
@@ -233,6 +423,49 @@ class ActiveRecordAttributeTypecast extends ActiveRecord
      */
     public function getAttributeTypecastBehavior()
     {
-        return $this->getBehavior('attributeTypecast');
+        /** @var AttributeTypecastBehavior $result */
+        $result = $this->getBehavior('attributeTypecast');
+
+        return $result;
+    }
+}
+
+/**
+ * Test Active Record class with [[AttributeTypecastBehavior]] behavior attached with an enum field.
+ *
+ * @property StatusTypeString|string $status
+ * @property-read AttributeTypecastBehavior $attributeTypecastBehavior
+ *
+ * @mixin AttributeTypecastBehavior
+ */
+class ActiveRecordAttributeTypecastWithEnum extends ActiveRecord
+{
+    public function behaviors()
+    {
+        return [
+            'attributeTypecast' => [
+                'class' => AttributeTypecastBehavior::class,
+                'attributeTypes' => [
+                    'status' => StatusTypeString::class,
+                ],
+                'typecastBeforeSave' => true,
+            ],
+        ];
+    }
+
+    public static function tableName()
+    {
+        return 'test_attribute_typecast';
+    }
+
+    /**
+     * @return AttributeTypecastBehavior
+     */
+    public function getAttributeTypecastBehavior()
+    {
+        /** @var AttributeTypecastBehavior $result */
+        $result = $this->getBehavior('attributeTypecast');
+
+        return $result;
     }
 }

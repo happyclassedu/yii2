@@ -1,21 +1,22 @@
 <?php
+
 /**
- * @link http://www.yiiframework.com/
+ * @link https://www.yiiframework.com/
  * @copyright Copyright (c) 2008 Yii Software LLC
- * @license http://www.yiiframework.com/license/
+ * @license https://www.yiiframework.com/license/
  */
 
 namespace yii\widgets;
 
 use Yii;
 use yii\base\Arrayable;
-use yii\i18n\Formatter;
 use yii\base\InvalidConfigException;
 use yii\base\Model;
 use yii\base\Widget;
 use yii\helpers\ArrayHelper;
 use yii\helpers\Html;
 use yii\helpers\Inflector;
+use yii\i18n\Formatter;
 
 /**
  * DetailView displays the detail of a single data [[model]].
@@ -29,7 +30,7 @@ use yii\helpers\Inflector;
  *
  * A typical usage of DetailView is as follows:
  *
- * ```php
+ * ```
  * echo DetailView::widget([
  *     'model' => $model,
  *     'attributes' => [
@@ -76,14 +77,14 @@ class DetailView extends Widget
      *   according to the `format` option. Since version 2.0.11 it can be defined as closure with the following
      *   parameters:
      *
-     *   ```php
+     *   ```
      *   function ($model, $widget)
      *   ```
      *
      *   `$model` refers to displayed model and `$widget` is an instance of `DetailView` widget.
      *
      * - `format`: the type of the value that determines how the value would be formatted into a displayable text.
-     *   Please refer to [[Formatter]] for supported types.
+     *   Please refer to [[Formatter]] for supported types and [[Formatter::format()]] on how to specify this value.
      * - `visible`: whether the attribute is visible. If set to `false`, the attribute will NOT be displayed.
      * - `contentOptions`: the HTML attributes to customize value tag. For example: `['class' => 'bg-red']`.
      *   Please refer to [[\yii\helpers\BaseHtml::renderTagAttributes()]] for the supported syntax.
@@ -96,7 +97,7 @@ class DetailView extends Widget
      * and `{value}` will be replaced with the label and the value of the corresponding attribute.
      * If a callback (e.g. an anonymous function), the signature must be as follows:
      *
-     * ```php
+     * ```
      * function ($attribute, $index, $widget)
      * ```
      *
@@ -108,13 +109,13 @@ class DetailView extends Widget
      */
     public $template = '<tr><th{captionOptions}>{label}</th><td{contentOptions}>{value}</td></tr>';
     /**
-     * @var array the HTML attributes for the container tag of this widget. The `tag` option specifies
+     * @var array|null the HTML attributes for the container tag of this widget. The `tag` option specifies
      * what container tag should be used. It defaults to `table` if not set.
      * @see \yii\helpers\Html::renderTagAttributes() for details on how attributes are being rendered.
      */
     public $options = ['class' => 'table table-striped table-bordered detail-view'];
     /**
-     * @var array|Formatter the formatter used to format model attribute values into displayable texts.
+     * @var array|Formatter|null the formatter used to format model attribute values into displayable texts.
      * This can be either an instance of [[Formatter]] or an configuration array for creating the [[Formatter]]
      * instance. If this property is not set, the `formatter` application component will be used.
      */
@@ -127,6 +128,8 @@ class DetailView extends Widget
      */
     public function init()
     {
+        parent::init();
+
         if ($this->model === null) {
             throw new InvalidConfigException('Please specify the "model" property.');
         }
@@ -177,11 +180,11 @@ class DetailView extends Widget
                 '{label}' => $attribute['label'],
                 '{value}' => $this->formatter->format($attribute['value'], $attribute['format']),
                 '{captionOptions}' => $captionOptions,
-                '{contentOptions}' =>  $contentOptions,
+                '{contentOptions}' => $contentOptions,
             ]);
-        } else {
-            return call_user_func($this->template, $attribute, $index, $this);
         }
+
+        return call_user_func($this->template, $attribute, $index, $this);
     }
 
     /**

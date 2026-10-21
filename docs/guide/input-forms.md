@@ -12,6 +12,10 @@ to validate its input on the server-side (Check the [Validating Input](input-val
 When creating model-based forms, the first step is to define the model itself. The model can be either based upon
 an [Active Record](db-active-record.md) class, representing some data from the database, or a generic Model class
 (extending from [[yii\base\Model]]) to capture arbitrary input, for example a login form.
+
+> Tip: If the form fields are different from database columns or there are formatting and logic that is specific to that
+> form only, prefer creating a separate model extended from [[yii\base\Model]].
+
 In the following example, we show how a generic model can be used for a login form:
 
 ```php
@@ -62,7 +66,7 @@ As with any widget, you can specify some options as to how the widget should be 
 the `begin` method. In this case, an extra CSS class and identifying ID are passed to be used in the opening `<form>` tag.
 For all available options, please refer to the API documentation of [[yii\widgets\ActiveForm]].
 
-### ActiveField <span id="activefield"></span>.
+### ActiveField <span id="activefield"></span>
 In order to create a form element in the form, along with the element's label, and any applicable JavaScript validation,
 the [[yii\widgets\ActiveForm::field()|ActiveForm::field()]] method is called, which returns an instance of [[yii\widgets\ActiveField]].
 When the result of this method is echoed directly, the result is a regular (text) input.
@@ -103,7 +107,7 @@ are some reserved names that can cause conflicts:
 
 > Forms and their child elements should not use input names or ids that conflict with properties of a form,
 > such as `submit`, `length`, or `method`. Name conflicts can cause confusing failures.
-> For a complete list of rules and to check your markup for these problems, see [DOMLint](http://kangax.github.io/domlint/).
+> For a complete list of rules and to check your markup for these problems, see [DOMLint](https://kangax.github.io/domlint/).
 
 Additional HTML tags can be added to the form using plain HTML or using the methods from the [[yii\helpers\Html|Html]]-helper
 class like it is done in the above example with [[yii\helpers\Html::submitButton()|Html::submitButton()]].
@@ -158,7 +162,7 @@ by the current value of the `$model`'s attribute.
 We can use ActiveField [[\yii\widgets\ActiveField::dropDownList()]] method to create a drop-down list:
 
 ```php
-/* @var $form yii\widgets\ActiveForm */
+/** @var \yii\widgets\ActiveForm $form */
 
 echo $form->field($model, 'category')->dropdownList([
         1 => 'item 1', 
@@ -173,7 +177,7 @@ echo $form->field($model, 'category')->dropdownList([
 We can use ActiveField [[\yii\widgets\ActiveField::radioList()]] method to create a radio list:
 
 ```php
-/* @var $form yii\widgets\ActiveForm */
+/** @var \yii\widgets\ActiveForm $form */
 
 echo $form->field($model, 'category')->radioList([
     1 => 'radio 1', 
@@ -186,7 +190,7 @@ echo $form->field($model, 'category')->radioList([
 We can use ActiveField [[\yii\widgets\ActiveField::checkboxList()]] method to create a checkbox list:
 
 ```php
-/* @var $form yii\widgets\ActiveForm */
+/** @var \yii\widgets\ActiveForm $form */
 
 echo $form->field($model, 'category')->checkboxList([
     1 => 'checkbox 1', 
@@ -237,7 +241,7 @@ introduced in HTML5.
 
 That means the only official support for files and submit button values with
 ajax or using the [[yii\widgets\Pjax|Pjax]] widget depends on the
-[browser support](https://developer.mozilla.org/en-US/docs/Web/API/FormData#Browser_compatibility)
+[browser support](https://developer.mozilla.org/en-US/docs/Web/API/FormData#browser_compatibility)
 for the `FormData` class.
 
 Further Reading <span id="further-reading"></span>

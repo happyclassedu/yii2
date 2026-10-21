@@ -1,8 +1,9 @@
 <?php
+
 /**
- * @link http://www.yiiframework.com/
+ * @link https://www.yiiframework.com/
  * @copyright Copyright (c) 2008 Yii Software LLC
- * @license http://www.yiiframework.com/license/
+ * @license https://www.yiiframework.com/license/
  */
 
 namespace yii\db;
@@ -24,7 +25,7 @@ interface QueryInterface
 {
     /**
      * Executes the query and returns all results as an array.
-     * @param Connection $db the database connection used to execute the query.
+     * @param Connection|null $db the database connection used to execute the query.
      * If this parameter is not given, the `db` application component will be used.
      * @return array the query results. If the query results in nothing, an empty array will be returned.
      */
@@ -32,7 +33,7 @@ interface QueryInterface
 
     /**
      * Executes the query and returns a single row of result.
-     * @param Connection $db the database connection used to execute the query.
+     * @param Connection|null $db the database connection used to execute the query.
      * If this parameter is not given, the `db` application component will be used.
      * @return array|bool the first row (in terms of an array) of the query result. False is returned if the query
      * results in nothing.
@@ -42,15 +43,15 @@ interface QueryInterface
     /**
      * Returns the number of records.
      * @param string $q the COUNT expression. Defaults to '*'.
-     * @param Connection $db the database connection used to execute the query.
+     * @param Connection|null $db the database connection used to execute the query.
      * If this parameter is not given, the `db` application component will be used.
-     * @return int number of records.
+     * @return int|string|null number of records.
      */
     public function count($q = '*', $db = null);
 
     /**
      * Returns a value indicating whether the query result contains any row of data.
-     * @param Connection $db the database connection used to execute the query.
+     * @param Connection|null $db the database connection used to execute the query.
      * If this parameter is not given, the `db` application component will be used.
      * @return bool whether the query result contains any row of data.
      */
@@ -62,7 +63,7 @@ interface QueryInterface
      * This can also be a callable (e.g. anonymous function) that returns the index value based on the given
      * row data. The signature of the callable should be:
      *
-     * ```php
+     * ```
      * function ($row)
      * {
      *     // return the index value corresponding to $row
@@ -82,7 +83,7 @@ interface QueryInterface
      * - operator format: `[operator, operand1, operand2, ...]`
      *
      * A condition in hash format represents the following SQL expression in general:
-     * `column1=value1 AND column2=value2 AND ...`. In case when a value is an array,
+     * `column1=value1 AND column2=value2 AND ...`. In case when a value is an array or sub-query,
      * an `IN` expression will be generated. And if a value is `null`, `IS NULL` will be used
      * in the generated expression. Below are some examples:
      *
@@ -153,7 +154,9 @@ interface QueryInterface
      * - Additionally you can specify arbitrary operators as follows: A condition of `['>=', 'id', 10]` will result in the
      *   following SQL expression: `id >= 10`.
      *
-     * @param string|array $condition the conditions that should be put in the WHERE part.
+     * **Note that this method will override any existing WHERE condition. You might want to use [[andWhere()]] or [[orWhere()]] instead.**
+     *
+     * @param array $condition the conditions that should be put in the WHERE part.
      * @return $this the query object itself
      * @see andWhere()
      * @see orWhere()
@@ -163,7 +166,7 @@ interface QueryInterface
     /**
      * Adds an additional WHERE condition to the existing one.
      * The new condition and the existing one will be joined using the 'AND' operator.
-     * @param string|array $condition the new WHERE condition. Please refer to [[where()]]
+     * @param array $condition the new WHERE condition. Please refer to [[where()]]
      * on how to specify this parameter.
      * @return $this the query object itself
      * @see where()
@@ -174,7 +177,7 @@ interface QueryInterface
     /**
      * Adds an additional WHERE condition to the existing one.
      * The new condition and the existing one will be joined using the 'OR' operator.
-     * @param string|array $condition the new WHERE condition. Please refer to [[where()]]
+     * @param array $condition the new WHERE condition. Please refer to [[where()]]
      * on how to specify this parameter.
      * @return $this the query object itself
      * @see where()
@@ -241,14 +244,14 @@ interface QueryInterface
 
     /**
      * Sets the LIMIT part of the query.
-     * @param int $limit the limit. Use null or negative value to disable limit.
+     * @param int|null $limit the limit. Use null or negative value to disable limit.
      * @return $this the query object itself
      */
     public function limit($limit);
 
     /**
      * Sets the OFFSET part of the query.
-     * @param int $offset the offset. Use null or negative value to disable offset.
+     * @param int|null $offset the offset. Use null or negative value to disable offset.
      * @return $this the query object itself
      */
     public function offset($offset);

@@ -1,12 +1,14 @@
 <?php
+
 /**
- * @link http://www.yiiframework.com/
+ * @link https://www.yiiframework.com/
  * @copyright Copyright (c) 2008 Yii Software LLC
- * @license http://www.yiiframework.com/license/
+ * @license https://www.yiiframework.com/license/
  */
 
 namespace yiiunit\framework\web;
 
+use SplStack;
 use yii\web\XmlResponseFormatter;
 use yiiunit\framework\web\stubs\ModelStub;
 
@@ -15,12 +17,13 @@ use yiiunit\framework\web\stubs\ModelStub;
  * @since 2.0
  *
  * @group web
+ *
+ * @extends FormatterTest<XmlResponseFormatter>
  */
 class XmlResponseFormatterTest extends FormatterTest
 {
     /**
      * @param array $options
-     * @return XmlResponseFormatter
      */
     protected function getFormatterInstance($options = [])
     {
@@ -34,6 +37,7 @@ class XmlResponseFormatterTest extends FormatterTest
         foreach ($data as &$item) {
             $item[1] = $this->xmlHead . $item[1];
         }
+
         return $data;
     }
 
@@ -44,7 +48,8 @@ class XmlResponseFormatterTest extends FormatterTest
             ['abc', "<response>abc</response>\n"],
             [true, "<response>true</response>\n"],
             [false, "<response>false</response>\n"],
-            ["<>", "<response>&lt;&gt;</response>\n"],
+            ['<>', "<response>&lt;&gt;</response>\n"],
+            ['a&b', "<response>a&amp;b</response>\n"],
         ]);
     }
 
@@ -57,6 +62,10 @@ class XmlResponseFormatterTest extends FormatterTest
                 'a' => 1,
                 'b' => 'abc',
             ], "<response><a>1</a><b>abc</b></response>\n"],
+            [
+                ['image:loc' => 'url'],
+                "<response><image:loc>url</image:loc></response>\n"
+            ],
             [[
                 1,
                 'abc',
@@ -69,6 +78,16 @@ class XmlResponseFormatterTest extends FormatterTest
                 'c' => [2, '<>'],
                 false,
             ], "<response><a>1</a><b>abc</b><c><item>2</item><item>&lt;&gt;</item></c><item>false</item></response>\n"],
+
+            // Checks if empty keys and keys not valid in XML are processed.
+            // See https://github.com/yiisoft/yii2/pull/10346/
+            [[
+                '' => 1,
+                '2015-06-18' => '2015-06-18',
+                'b:c' => 'b:c',
+                'a b c' => 'a b c',
+                'äøñ' => 'äøñ',
+            ], "<response><item>1</item><item>2015-06-18</item><b:c>b:c</b:c><item>a b c</item><äøñ>äøñ</äøñ></response>\n"],
         ]);
     }
 
@@ -76,7 +95,7 @@ class XmlResponseFormatterTest extends FormatterTest
     {
         $expectedXmlForStack = '';
 
-        $postsStack = new \SplStack();
+        $postsStack = new SplStack();
 
         $postsStack->push(new Post(915, 'record1'));
         $expectedXmlForStack = '<Post><id>915</id><title>record1</title></Post>' .
@@ -87,7 +106,7 @@ class XmlResponseFormatterTest extends FormatterTest
           $expectedXmlForStack;
 
         $data = [
-            [$postsStack, "<response>$expectedXmlForStack</response>\n"]
+            [$postsStack, "<response>$expectedXmlForStack</response>\n"],
         ];
 
         return $this->addXmlHead($data);
@@ -113,12 +132,12 @@ class XmlResponseFormatterTest extends FormatterTest
         return $this->addXmlHead([
             [
                 new ModelStub(['id' => 123, 'title' => 'abc', 'hidden' => 'hidden']),
-                "<response><ModelStub><id>123</id><title>abc</title></ModelStub></response>\n"
-            ]
+                "<response><ModelStub><id>123</id><title>abc</title></ModelStub></response>\n",
+            ],
         ]);
     }
 
-    public function testCustomRootTag()
+    public function testCustomRootTag(): void
     {
         $rootTag = 'custom';
         $formatter = $this->getFormatterInstance([
@@ -130,7 +149,7 @@ class XmlResponseFormatterTest extends FormatterTest
         $this->assertEquals($this->xmlHead . "<$rootTag>1</$rootTag>\n", $this->response->content);
     }
 
-    public function testRootTagRemoval()
+    public function testRootTagRemoval(): void
     {
         $formatter = $this->getFormatterInstance([
             'rootTag' => null,
@@ -141,7 +160,7 @@ class XmlResponseFormatterTest extends FormatterTest
         $this->assertEquals($this->xmlHead . "1\n", $this->response->content);
     }
 
-    public function testNoObjectTags()
+    public function testNoObjectTags(): void
     {
         $formatter = $this->getFormatterInstance([
             'useObjectTags' => false,
@@ -150,5 +169,14 @@ class XmlResponseFormatterTest extends FormatterTest
         $this->response->data = new Post(123, 'abc');
         $formatter->format($this->response);
         $this->assertEquals($this->xmlHead . "<response><id>123</id><title>abc</title></response>\n", $this->response->content);
+    }
+
+    public function testObjectTagToLowercase(): void
+    {
+        $formatter = $this->getFormatterInstance(['objectTagToLowercase' => true]);
+
+        $this->response->data = new Post(123, 'abc');
+        $formatter->format($this->response);
+        $this->assertEquals($this->xmlHead . "<response><post><id>123</id><title>abc</title></post></response>\n", $this->response->content);
     }
 }

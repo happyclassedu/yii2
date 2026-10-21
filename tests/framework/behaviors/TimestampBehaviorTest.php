@@ -1,13 +1,20 @@
 <?php
 
+/**
+ * @link https://www.yiiframework.com/
+ * @copyright Copyright (c) 2008 Yii Software LLC
+ * @license https://www.yiiframework.com/license/
+ */
+
 namespace yiiunit\framework\behaviors;
 
 use Yii;
-use yii\db\Expression;
-use yiiunit\TestCase;
-use yii\db\Connection;
-use yii\db\ActiveRecord;
 use yii\behaviors\TimestampBehavior;
+use yii\db\ActiveRecord;
+use yii\db\Connection;
+use yii\db\Expression;
+use yii\db\ExpressionInterface;
+use yiiunit\TestCase;
 
 /**
  * Unit test for [[\yii\behaviors\TimestampBehavior]].
@@ -22,22 +29,22 @@ class TimestampBehaviorTest extends TestCase
      */
     protected $dbConnection;
 
-    public static function setUpBeforeClass()
+    public static function setUpBeforeClass(): void
     {
         if (!extension_loaded('pdo') || !extension_loaded('pdo_sqlite')) {
             static::markTestSkipped('PDO and SQLite extensions are required.');
         }
     }
 
-    public function setUp()
+    protected function setUp(): void
     {
         $this->mockApplication([
             'components' => [
                 'db' => [
                     'class' => '\yii\db\Connection',
                     'dsn' => 'sqlite::memory:',
-                ]
-            ]
+                ],
+            ],
         ]);
 
         $columns = [
@@ -55,20 +62,22 @@ class TimestampBehaviorTest extends TestCase
         Yii::$app->getDb()->createCommand()->createTable('test_auto_timestamp_string', $columns)->execute();
     }
 
-    public function tearDown()
+    protected function tearDown(): void
     {
         Yii::$app->getDb()->close();
         parent::tearDown();
+        gc_enable();
+        gc_collect_cycles();
     }
 
     // Tests :
 
-    public function testNewRecord()
+    public function testNewRecord(): void
     {
         $currentTime = time();
 
         ActiveRecordTimestamp::$behaviors = [
-            TimestampBehavior::className(),
+            TimestampBehavior::class,
         ];
         $model = new ActiveRecordTimestamp();
         $model->save(false);
@@ -80,12 +89,12 @@ class TimestampBehaviorTest extends TestCase
     /**
      * @depends testNewRecord
      */
-    public function testUpdateRecord()
+    public function testUpdateRecord(): void
     {
         $currentTime = time();
 
         ActiveRecordTimestamp::$behaviors = [
-            TimestampBehavior::className(),
+            TimestampBehavior::class,
         ];
         $model = new ActiveRecordTimestamp();
         $model->save(false);
@@ -103,12 +112,10 @@ class TimestampBehaviorTest extends TestCase
     /**
      * @depends testNewRecord
      */
-    public function testUpdateCleanRecord()
+    public function testUpdateCleanRecord(): void
     {
-        $currentTime = time();
-
         ActiveRecordTimestamp::$behaviors = [
-            TimestampBehavior::className(),
+            TimestampBehavior::class,
         ];
         $model = new ActiveRecordTimestamp();
         $model->save(false);
@@ -123,34 +130,45 @@ class TimestampBehaviorTest extends TestCase
         $model->save(false);
     }
 
-    public function expressionProvider()
+    public static function expressionProvider(): array
     {
         return [
-            [function () { return '2015-01-01'; }, '2015-01-01'],
+            [
+                function () {
+                    return '2015-01-01';
+                },
+                '2015-01-01',
+            ],
             [new Expression("strftime('%Y')"), date('Y')],
             ['2015-10-20', '2015-10-20'],
             [time(), time()],
-            [[$this, 'arrayCallable'], '2015-10-20'],
+            [[null, 'arrayCallable'], '2015-10-20'],
         ];
     }
 
     /**
      * @dataProvider expressionProvider
+     * @param mixed $expression
+     * @param mixed $expected
      */
-    public function testNewRecordExpression($expression, $expected)
+    public function testNewRecordExpression($expression, $expected): void
     {
+        if (is_array($expression)) {
+            $expression[0] ??= $this;
+        }
+
         ActiveRecordTimestamp::$tableName = 'test_auto_timestamp_string';
         ActiveRecordTimestamp::$behaviors = [
             'timestamp' => [
-                'class' => TimestampBehavior::className(),
+                'class' => TimestampBehavior::class,
                 'value' => $expression,
             ],
         ];
         $model = new ActiveRecordTimestamp();
         $model->save(false);
-        if ($expression instanceof Expression) {
-            $this->assertInstanceOf(Expression::className(), $model->created_at);
-            $this->assertInstanceOf(Expression::className(), $model->updated_at);
+        if ($expression instanceof ExpressionInterface) {
+            $this->assertInstanceOf('yii\db\ExpressionInterface', $model->created_at);
+            $this->assertInstanceOf('yii\db\ExpressionInterface', $model->updated_at);
             $model->refresh();
         }
         $this->assertEquals($expected, $model->created_at);
@@ -165,12 +183,12 @@ class TimestampBehaviorTest extends TestCase
     /**
      * @depends testNewRecord
      */
-    public function testUpdateRecordExpression()
+    public function testUpdateRecordExpression(): void
     {
         ActiveRecordTimestamp::$tableName = 'test_auto_timestamp_string';
         ActiveRecordTimestamp::$behaviors = [
             'timestamp' => [
-                'class' => TimestampBehavior::className(),
+                'class' => TimestampBehavior::class,
                 'value' => new Expression("strftime('%Y')"),
             ],
         ];
@@ -183,10 +201,45 @@ class TimestampBehaviorTest extends TestCase
         $model->updated_at = $enforcedTime;
         $model->save(false);
         $this->assertEquals($enforcedTime, $model->created_at, 'Create time has been set on update!');
-        $this->assertInstanceOf(Expression::className(), $model->updated_at);
+        $this->assertInstanceOf(Expression::class, $model->updated_at);
         $model->refresh();
         $this->assertEquals($enforcedTime, $model->created_at, 'Create time has been set on update!');
         $this->assertEquals(date('Y'), $model->updated_at);
+    }
+
+    public function testTouchingNewRecordGeneratesException(): void
+    {
+        ActiveRecordTimestamp::$behaviors = [
+            'timestamp' => [
+                'class' => TimestampBehavior::class,
+                'value' => new Expression("strftime('%Y')"),
+            ],
+        ];
+        $model = new ActiveRecordTimestamp();
+
+        $this->expectException('yii\base\InvalidCallException');
+
+        $model->touch('created_at');
+    }
+
+    public function testTouchingNotNewRecord(): void
+    {
+        ActiveRecordTimestamp::$behaviors = [
+            'timestamp' => [
+                'class' => TimestampBehavior::class,
+                'value' => new Expression("strftime('%Y')"),
+            ],
+        ];
+        $model = new ActiveRecordTimestamp();
+        $enforcedTime = date('Y') - 1;
+        $model->created_at = $enforcedTime;
+        $model->updated_at = $enforcedTime;
+        $model->save(false);
+        $expectedCreatedAt = new Expression("strftime('%Y')");
+
+        $model->touch('created_at');
+
+        $this->assertEquals($expectedCreatedAt, $model->created_at);
     }
 }
 
@@ -196,6 +249,9 @@ class TimestampBehaviorTest extends TestCase
  * @property int $id
  * @property int $created_at
  * @property int $updated_at
+ *
+ * @mixin TimestampBehavior
+ * We use `mixin` here to avoid PHPStan errors.
  */
 class ActiveRecordTimestamp extends ActiveRecord
 {

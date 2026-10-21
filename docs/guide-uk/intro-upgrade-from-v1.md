@@ -30,16 +30,16 @@ Yii 2.0 використовує PHP 5.4 або вище, який включа�
 яка використовувалася Yii 1.1. Таким чином, існує багато відмінностей у мові, які ви повинні приймати до уваги.
 Нижче наведені основні зміни в PHP:
 
-- [Простори імен](http://php.net/manual/en/language.namespaces.php);
-- [Анонімні функції](http://php.net/manual/en/functions.anonymous.php);
+- [Простори імен](https://www.php.net/manual/en/language.namespaces.php);
+- [Анонімні функції](https://www.php.net/manual/en/functions.anonymous.php);
 - Використання короткого синтаксису для масивів: `[...елементи...]` замість `array(...елементи...)`;
 - Використання тегів `<?=` для вивода у файлах представлень.
   З версії PHP 5.4 дану можливість можна використовувати без побоювань;
-- [Класи та інтерфейси SPL](http://php.net/manual/en/book.spl.php);
-- [Пізнє статичне звʼязування (LSB)](http://php.net/manual/en/language.oop5.late-static-bindings.php);
-- [Класи для дати та часу](http://php.net/manual/en/book.datetime.php);
-- [Трейти](http://php.net/manual/en/language.oop5.traits.php);
-- [Інтернаціонализація (intl)](http://php.net/manual/en/book.intl.php); Yii 2.0 використовує розширення PHP `intl`
+- [Класи та інтерфейси SPL](https://www.php.net/manual/en/book.spl.php);
+- [Пізнє статичне звʼязування (LSB)](https://www.php.net/manual/en/language.oop5.late-static-bindings.php);
+- [Класи для дати та часу](https://www.php.net/manual/en/book.datetime.php);
+- [Трейти](https://www.php.net/manual/en/language.oop5.traits.php);
+- [Інтернаціонализація (intl)](https://www.php.net/manual/en/book.intl.php); Yii 2.0 використовує розширення PHP `intl`
   для різного функціоналу інтернаціоналізації.
 
 
@@ -56,24 +56,24 @@ Yii 2.0 використовує PHP 5.4 або вище, який включа�
 Компонент та Обʼєкт
 -------------------
 
-В Yii 2.0 клас `CComponent` із версії 1.1 був розділений на два класи: [[yii\base\Object]] і [[yii\base\Component]].
-Клас [[yii\base\Object|Object]] є простим базовим класом, який дозволяє керувати [властивостями обʼєкта](concept-properties.md)
+В Yii 2.0 клас `CComponent` із версії 1.1 був розділений на два класи: [[yii\base\BaseObject]] і [[yii\base\Component]].
+Клас [[yii\base\BaseObject|BaseObject]] є простим базовим класом, який дозволяє керувати [властивостями обʼєкта](concept-properties.md)
 за допомогою геттерів та сеттерів. Клас [[yii\base\Component|Component]] наслідується
-від класа [[yii\base\Object|Object]] та підтримує [події](concept-events.md) та [поведінки](concept-behaviors.md).
+від класа [[yii\base\BaseObject|BaseObject]] та підтримує [події](concept-events.md) та [поведінки](concept-behaviors.md).
 
 Якщо вашому класу не потрібно використовувати функціонал подій та поведінок, ви можете використати
-[[yii\base\Object|Object]] у якості базового класу. В основному, це випадки, коли класи представляють собою базові
+[[yii\base\BaseObject|BaseObject]] у якості базового класу. В основному, це випадки, коли класи представляють собою базові
 структури даних.
 
 
 Конфігурація обʼєкта
 --------------------
 
-Клас [[yii\base\Object|Object]] надає єдиний спосіб конфігурування обʼєктів. Будь-який дочірній клас
-[[yii\base\Object|Object]] може визначити конструктор (якщо потрібно) для своєї конфігурації наступним чином:
+Клас [[yii\base\BaseObject|BaseObject]] надає єдиний спосіб конфігурування обʼєктів. Будь-який дочірній клас
+[[yii\base\BaseObject|BaseObject]] може визначити конструктор (якщо потрібно) для своєї конфігурації наступним чином:
 
 ```php
-class MyClass extends \yii\base\Object
+class MyClass extends \yii\base\BaseObject
 {
     public function __construct($param1, $param2, $config = [])
     {
@@ -92,7 +92,7 @@ class MyClass extends \yii\base\Object
 ```
 
 У прикладі вище, останній параметр конструктора повинен бути масивом конфігурації, який містить пари у форматі
-ключ-значення для ініціалізації властивостей обʼєкта. Ви можете перевизначити метод [[yii\base\Object::init()|init()]]
+ключ-значення для ініціалізації властивостей обʼєкта. Ви можете перевизначити метод [[yii\base\BaseObject::init()|init()]]
 для ініціалізації обʼєкту після того, як до нього була застосована конфігурація.
 
 Дотримуючись цієї угоди, ви зможете створювати і конфігурувати нові обʼєкти за допомогою масиву конфігурації:
@@ -296,7 +296,7 @@ I18N
 ----
 
 У Yii 2.0 були прибрані вбудовані форматтери часу та чисел на користь 
-[PECL розширення PHP intl](http://pecl.php.net/package/intl).
+[PECL розширення PHP intl](https://pecl.php.net/package/intl).
 
 Переклад повідомлень тепер здійснюється через компонент додатка `i18n`. Даний компонент управляє наборами джерел
 повідомлень, що дозволяє вам використовувати різні джерела повідомлень, залежно від категорії повідомлення.
@@ -512,7 +512,7 @@ User та IdentityInterface
 Замість цього, необхідно реалізувати інтерфейс [[yii\web\IdentityInterface]], що набагато простіше у використанні.
 
 Більш детальна інформація представлена у розділах [Аутентифікація](security-authentication.md),
-[Авторизація](security-authorization.md) та [Розширений шаблон додатка](https://github.com/yiisoft/yii2-app-advanced/blob/master/docs/guide-uk/README.md).
+[Авторизація](security-authorization.md) та [Розширений шаблон додатка](https://www.yiiframework.com/extension/yiisoft/yii2-app-advanced/doc/guide).
 
 
 Керування URL

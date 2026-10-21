@@ -1,8 +1,18 @@
 <?php
 
+/**
+ * @link https://www.yiiframework.com/
+ * @copyright Copyright (c) 2008 Yii Software LLC
+ * @license https://www.yiiframework.com/license/
+ */
+
 namespace yiiunit\framework\web;
 
+use Yii;
+use yii\caching\ArrayCache;
 use yii\web\UrlManager;
+use yii\web\UrlRule;
+use yiiunit\framework\web\stubs\CachedUrlRule;
 use yiiunit\TestCase;
 
 /**
@@ -46,21 +56,20 @@ class UrlManagerCreateUrlTest extends TestCase
     {
         // in this test class, all tests have enablePrettyUrl enabled.
         $config['enablePrettyUrl'] = true;
-        $config['cache'] = null;
 
         // set default values if they are not set
         $config = array_merge([
             'baseUrl' => '',
             'scriptUrl' => '/index.php',
             'hostInfo' => 'http://www.example.com',
+            'cache' => null,
             'showScriptName' => $showScriptName,
         ], $config);
 
         return new UrlManager($config);
     }
 
-
-    public function variationsProvider()
+    public static function variationsProvider(): array
     {
         $baseUrlConfig = [
             'baseUrl' => '/test',
@@ -88,8 +97,12 @@ class UrlManagerCreateUrlTest extends TestCase
      * without rules.
      *
      * @dataProvider variationsProvider
+     * @param string $method
+     * @param bool $showScriptName
+     * @param string $prefix
+     * @param array $config
      */
-    public function testWithoutRules($method, $showScriptName, $prefix, $config)
+    public function testWithoutRules($method, $showScriptName, $prefix, $config): void
     {
         $manager = $this->getUrlManager($config, $showScriptName);
 
@@ -113,14 +126,19 @@ class UrlManagerCreateUrlTest extends TestCase
     }
 
     /**
-     * Test createUrl() and createAbsoluteUrl()
-     * with varying $showScriptName
-     * without rules.
-     * With UrlManager::$suffix
+     * Test createUrl() and createAbsoluteUrl().
+     *
+     * - with varying $showScriptName,
+     * - without rules,
+     * - with UrlManager::$suffix.
      *
      * @dataProvider variationsProvider
+     * @param string $method
+     * @param bool $showScriptName
+     * @param string $prefix
+     * @param array $config
      */
-    public function testWithoutRulesWithSuffix($method, $showScriptName, $prefix, $config)
+    public function testWithoutRulesWithSuffix($method, $showScriptName, $prefix, $config): void
     {
         $config['suffix'] = '.html';
         $manager = $this->getUrlManager($config, $showScriptName);
@@ -173,13 +191,18 @@ class UrlManagerCreateUrlTest extends TestCase
      * with simple rules.
      *
      * @dataProvider variationsProvider
+     * @param string $method
+     * @param bool $showScriptName
+     * @param string $prefix
+     * @param array $config
      */
-    public function testSimpleRules($method, $showScriptName, $prefix, $config)
+    public function testSimpleRules($method, $showScriptName, $prefix, $config): void
     {
         $config['rules'] = [
             'post/<id:\d+>' => 'post/view',
             'posts' => 'post/index',
             'book/<id:\d+>/<title>' => 'book/view',
+            'POST posts' => 'post/create',
         ];
         $manager = $this->getUrlManager($config, $showScriptName);
 
@@ -213,17 +236,26 @@ class UrlManagerCreateUrlTest extends TestCase
         // match third rule, ensure encoding of params
         $url = $manager->$method(['book/view', 'id' => 1, 'title' => 'sample post']);
         $this->assertEquals("$prefix/book/1/sample+post", $url);
+
+        // match fourth rule, since 2.0.41 non-GET verbs are allowed
+        $url = $manager->$method(['post/create']);
+        $this->assertEquals("$prefix/posts", $url);
     }
 
     /**
-     * Test createUrl() and createAbsoluteUrl()
-     * with varying $showScriptName
-     * with simple rules.
-     * With UrlManager::$suffix
+     * Test createUrl() and createAbsoluteUrl().
+     *
+     * - with varying $showScriptName,
+     * - with simple rules,
+     * - with UrlManager::$suffix.
      *
      * @dataProvider variationsProvider
+     * @param string $method
+     * @param bool $showScriptName
+     * @param string $prefix
+     * @param array $config
      */
-    public function testSimpleRulesWithSuffix($method, $showScriptName, $prefix, $config)
+    public function testSimpleRulesWithSuffix($method, $showScriptName, $prefix, $config): void
     {
         $config['rules'] = [
             'post/<id:\d+>' => 'post/view',
@@ -271,8 +303,12 @@ class UrlManagerCreateUrlTest extends TestCase
      * with rules that have varadic controller/actions.
      *
      * @dataProvider variationsProvider
+     * @param string $method
+     * @param bool $showScriptName
+     * @param string $prefix
+     * @param array $config
      */
-    public function testControllerActionParams($method, $showScriptName, $prefix, $config)
+    public function testControllerActionParams($method, $showScriptName, $prefix, $config): void
     {
         $config['rules'] = [
             '<controller>/<id:\d+>' => '<controller>/view',
@@ -318,8 +354,12 @@ class UrlManagerCreateUrlTest extends TestCase
      * with rules that have default values for parameters.
      *
      * @dataProvider variationsProvider
+     * @param string $method
+     * @param bool $showScriptName
+     * @param string $prefix
+     * @param array $config
      */
-    public function testRulesWithDefaultParams($method, $showScriptName, $prefix, $config)
+    public function testRulesWithDefaultParams($method, $showScriptName, $prefix, $config): void
     {
         $config['rules'] = [
             [
@@ -332,7 +372,7 @@ class UrlManagerCreateUrlTest extends TestCase
                 'pattern' => '<language>',
                 'route' => 'site/index',
                 'defaults' => [
-                    'language' => 'en'
+                    'language' => 'en',
                 ],
             ],
         ];
@@ -392,8 +432,12 @@ class UrlManagerCreateUrlTest extends TestCase
      *
      * @dataProvider variationsProvider
      * @see https://github.com/yiisoft/yii2/issues/10935
+     * @param string $method
+     * @param bool $showScriptName
+     * @param string $prefix
+     * @param array $config
      */
-    public function testWithNullParams($method, $showScriptName, $prefix, $config)
+    public function testWithNullParams($method, $showScriptName, $prefix, $config): void
     {
         $config['rules'] = [
             '<param1>/<param2>' => 'site/index',
@@ -420,7 +464,6 @@ class UrlManagerCreateUrlTest extends TestCase
         $this->assertEquals("$prefix/site/index?param2=123", $url);
     }
 
-
     /**
      * Test createUrl() and createAbsoluteUrl()
      * with varying $showScriptName
@@ -428,10 +471,14 @@ class UrlManagerCreateUrlTest extends TestCase
      *
      * @dataProvider variationsProvider
      * @see https://github.com/yiisoft/yii2/issues/6717
+     * @param string $method
+     * @param bool $showScriptName
+     * @param string $prefix
+     * @param array $config
      */
-    public function testWithEmptyPattern($method, $showScriptName, $prefix, $config)
+    public function testWithEmptyPattern($method, $showScriptName, $prefix, $config): void
     {
-        $assertations = function($manager) use ($method, $prefix) {
+        $assertations = function ($manager) use ($method, $prefix) {
             // match first rule
             $url = $manager->$method(['front/site/index']);
             $this->assertEquals("$prefix/", $url);
@@ -474,8 +521,7 @@ class UrlManagerCreateUrlTest extends TestCase
         $assertations($manager);
     }
 
-
-    public function absolutePatternsVariations()
+    public static function absolutePatternsVariations(): array
     {
         $baseUrlConfig = [
             'baseUrl' => '/test',
@@ -496,8 +542,11 @@ class UrlManagerCreateUrlTest extends TestCase
     /**
      * Test rules that have host info in the patterns.
      * @dataProvider absolutePatternsVariations
+     * @param bool $showScriptName
+     * @param string $prefix
+     * @param array $config
      */
-    public function testAbsolutePatterns($showScriptName, $prefix, $config)
+    public function testAbsolutePatterns($showScriptName, $prefix, $config): void
     {
         $config['rules'] = [
             [
@@ -548,15 +597,17 @@ class UrlManagerCreateUrlTest extends TestCase
         $this->assertEquals("$prefix/post/index?page=1#testhash", $manager->createUrl($urlParams));
         $expected = "http://www.example.com$prefix/post/index?page=1#testhash";
         $this->assertEquals($expected, $manager->createAbsoluteUrl($urlParams));
-
     }
 
     /**
      * Test rules that have host info in the patterns, that are protocol relative.
      * @dataProvider absolutePatternsVariations
      * @see https://github.com/yiisoft/yii2/issues/12691
+     * @param bool $showScriptName
+     * @param string $prefix
+     * @param array $config
      */
-    public function testProtocolRelativeAbsolutePattern($showScriptName, $prefix, $config)
+    public function testProtocolRelativeAbsolutePattern($showScriptName, $prefix, $config): void
     {
         $config['rules'] = [
             [
@@ -631,7 +682,7 @@ class UrlManagerCreateUrlTest extends TestCase
         $this->assertEquals($expected, $manager->createAbsoluteUrl($urlParams));
     }
 
-    public function multipleHostsRulesDataProvider()
+    public static function multipleHostsRulesDataProvider(): array
     {
         return [
             ['http://example.com'],
@@ -642,12 +693,13 @@ class UrlManagerCreateUrlTest extends TestCase
     }
 
     /**
-     * Test matching of Url rules dependent on the current host info
+     * Test matching of Url rules dependent on the current host info.
      *
      * @dataProvider multipleHostsRulesDataProvider
      * @see https://github.com/yiisoft/yii2/issues/7948
+     * @param string $host
      */
-    public function testMultipleHostsRules($host)
+    public function testMultipleHostsRules($host): void
     {
         $manager = new UrlManager([
             'enablePrettyUrl' => true,
@@ -674,4 +726,134 @@ class UrlManagerCreateUrlTest extends TestCase
         $this->assertEquals('http://example.fr/search?param1=value1', $url);
     }
 
+    public function testCreateUrlCache(): void
+    {
+        /** @var CachedUrlRule[] $rules */
+        $rules = [
+            Yii::createObject([
+                'class' => CachedUrlRule::class,
+                'route' => 'user/show',
+                'pattern' => 'user/<name:[\w-]+>',
+            ]),
+            Yii::createObject([
+                'class' => CachedUrlRule::class,
+                'route' => '<controller>/<action>',
+                'pattern' => '<controller:\w+>/<action:\w+>',
+            ]),
+        ];
+        $manager = $this->getUrlManager([
+            'rules' => $rules,
+        ], false);
+
+        $this->assertEquals('/user/rob006', $manager->createUrl(['user/show', 'name' => 'rob006']));
+        $this->assertEquals(UrlRule::CREATE_STATUS_SUCCESS, $rules[0]->getCreateUrlStatus());
+        $this->assertEquals(1, $rules[0]->createCounter);
+        $this->assertEquals(0, $rules[1]->createCounter);
+
+        $this->assertEquals('/user/show?name=John+Doe', $manager->createUrl(['user/show', 'name' => 'John Doe']));
+        $this->assertEquals(UrlRule::CREATE_STATUS_PARAMS_MISMATCH, $rules[0]->getCreateUrlStatus());
+        $this->assertEquals(UrlRule::CREATE_STATUS_SUCCESS, $rules[1]->getCreateUrlStatus());
+        $this->assertEquals(2, $rules[0]->createCounter);
+        $this->assertEquals(1, $rules[1]->createCounter);
+
+        $this->assertEquals('/user/profile?name=rob006', $manager->createUrl(['user/profile', 'name' => 'rob006']));
+        $this->assertEquals(UrlRule::CREATE_STATUS_ROUTE_MISMATCH, $rules[0]->getCreateUrlStatus());
+        $this->assertEquals(UrlRule::CREATE_STATUS_SUCCESS, $rules[1]->getCreateUrlStatus());
+        $this->assertEquals(3, $rules[0]->createCounter);
+        $this->assertEquals(2, $rules[1]->createCounter);
+
+        $this->assertEquals('/user/profile?name=John+Doe', $manager->createUrl(['user/profile', 'name' => 'John Doe']));
+        $this->assertEquals(UrlRule::CREATE_STATUS_ROUTE_MISMATCH, $rules[0]->getCreateUrlStatus());
+        $this->assertEquals(UrlRule::CREATE_STATUS_SUCCESS, $rules[1]->getCreateUrlStatus());
+        // fist rule is skipped - cached rule has precedence
+        $this->assertEquals(3, $rules[0]->createCounter);
+        $this->assertEquals(3, $rules[1]->createCounter);
+    }
+
+    /**
+     * @see https://github.com/yiisoft/yii2/pull/1335
+     */
+    public function testUrlCreateCacheWithParameterMismatch(): void
+    {
+        /** @var CachedUrlRule[] $rules */
+        $rules = [
+            Yii::createObject([
+                'class' => CachedUrlRule::class,
+                'route' => 'user/show',
+                'pattern' => 'user/<name:[\w-]+>',
+            ]),
+            Yii::createObject([
+                'class' => CachedUrlRule::class,
+                'route' => '<controller>/<action>',
+                'pattern' => '<controller:\w+>/<action:\w+>',
+            ]),
+        ];
+        $manager = $this->getUrlManager([
+            'rules' => $rules,
+        ], false);
+
+        $this->assertEquals('/user/show?name=John+Doe', $manager->createUrl(['user/show', 'name' => 'John Doe']));
+        $this->assertEquals(UrlRule::CREATE_STATUS_PARAMS_MISMATCH, $rules[0]->getCreateUrlStatus());
+        $this->assertEquals(UrlRule::CREATE_STATUS_SUCCESS, $rules[1]->getCreateUrlStatus());
+        $this->assertEquals(1, $rules[0]->createCounter);
+        $this->assertEquals(1, $rules[1]->createCounter);
+
+        $this->assertEquals('/user/rob006', $manager->createUrl(['user/show', 'name' => 'rob006']));
+        $this->assertEquals(UrlRule::CREATE_STATUS_SUCCESS, $rules[0]->getCreateUrlStatus());
+        $this->assertEquals(2, $rules[0]->createCounter);
+        $this->assertEquals(1, $rules[1]->createCounter);
+    }
+
+    /**
+     * @see https://github.com/yiisoft/yii2/issues/14406
+     */
+    public function testCreatingRulesWithDifferentRuleConfigAndEnabledCache(): void
+    {
+        $this->mockWebApplication([
+            'components' => [
+                'cache' => ArrayCache::class,
+            ],
+        ]);
+        $urlManager = $this->getUrlManager([
+            'cache' => 'cache',
+            'rules' => [
+                '/' => 'site/index',
+            ],
+        ]);
+
+        $cachedUrlManager = $this->getUrlManager([
+            'cache' => 'cache',
+            'ruleConfig' => [
+                'class' => CachedUrlRule::class,
+            ],
+            'rules' => [
+                '/' => 'site/index',
+            ],
+        ]);
+
+        $this->assertNotEquals($urlManager->rules, $cachedUrlManager->rules);
+        $this->assertInstanceOf(UrlRule::class, $urlManager->rules[0]);
+        $this->assertInstanceOf(CachedUrlRule::class, $cachedUrlManager->rules[0]);
+    }
+
+    public function testNotEnsuringCacheForEmptyRuleset(): void
+    {
+        $this->mockWebApplication([
+            'components' => [
+                'cache' => ArrayCache::class,
+            ],
+        ]);
+        // no rules - don't ensure cache
+        $urlManager = $this->getUrlManager([
+            'cache' => 'cache',
+            'rules' => [],
+        ]);
+        $this->assertSame('cache', $urlManager->cache);
+        // with rules - ensure cache
+        $urlManager = $this->getUrlManager([
+            'cache' => 'cache',
+            'rules' => ['/' => 'site/index'],
+        ]);
+        $this->assertInstanceOf(ArrayCache::class, $urlManager->cache);
+    }
 }

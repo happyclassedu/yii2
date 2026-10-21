@@ -1,8 +1,15 @@
 <?php
 
+/**
+ * @link https://www.yiiframework.com/
+ * @copyright Copyright (c) 2008 Yii Software LLC
+ * @license https://www.yiiframework.com/license/
+ */
+
 namespace yiiunit\framework\db\mssql;
 
-use yii\db\Schema;
+use yii\db\pgsql\Schema;
+use yii\db\Query;
 
 /**
  * @group db
@@ -12,21 +19,21 @@ class CommandTest extends \yiiunit\framework\db\CommandTest
 {
     protected $driverName = 'sqlsrv';
 
-    public function testAutoQuoting()
+    public function testAutoQuoting(): void
     {
         $db = $this->getConnection(false);
 
         $sql = 'SELECT [[id]], [[t.name]] FROM {{customer}} t';
         $command = $db->createCommand($sql);
-        $this->assertEquals("SELECT [id], [t].[name] FROM [customer] t", $command->sql);
+        $this->assertEquals('SELECT [id], [t].[name] FROM [customer] t', $command->sql);
     }
 
-    public function testPrepareCancel()
+    public function testPrepareCancel(): void
     {
         $this->markTestSkipped('MSSQL driver does not support this feature.');
     }
 
-    public function testBindParamValue()
+    public function testBindParamValue(): void
     {
         $db = $this->getConnection();
 
@@ -50,7 +57,7 @@ class CommandTest extends \yiiunit\framework\db\CommandTest
         $command = $db->createCommand($sql);
         $intCol = 123;
         $charCol = 'abc';
-        $floatCol = 1.23;
+        $floatCol = 1.230;
         $blobCol = "\x10\x11\x12";
         $numericCol = '1.23';
         $boolCol = false;
@@ -64,9 +71,10 @@ class CommandTest extends \yiiunit\framework\db\CommandTest
 
         $sql = 'SELECT int_col, char_col, float_col, CONVERT([nvarchar], blob_col) AS blob_col, numeric_col FROM type';
         $row = $db->createCommand($sql)->queryOne();
+
         $this->assertEquals($intCol, $row['int_col']);
         $this->assertEquals($charCol, trim($row['char_col']));
-        $this->assertEquals($floatCol, $row['float_col']);
+        $this->assertEquals($floatCol, (float) $row['float_col']);
         $this->assertEquals($blobCol, $row['blob_col']);
         $this->assertEquals($numericCol, $row['numeric_col']);
 
@@ -82,12 +90,70 @@ class CommandTest extends \yiiunit\framework\db\CommandTest
         $this->assertEquals('user5@example.com', $command->queryScalar());
     }
 
-    public function paramsNonWhereProvider()
+    public static function paramsNonWhereProvider(): array
     {
         return[
             ['SELECT SUBSTRING(name, :len, 6) AS name FROM {{customer}} WHERE [[email]] = :email GROUP BY name'],
             ['SELECT SUBSTRING(name, :len, 6) as name FROM {{customer}} WHERE [[email]] = :email ORDER BY name'],
             ['SELECT SUBSTRING(name, :len, 6) FROM {{customer}} WHERE [[email]] = :email'],
         ];
+    }
+
+    public function testAddDropDefaultValue(): void
+    {
+        $db = $this->getConnection(false);
+        $tableName = 'test_def';
+        $name = 'test_def_constraint';
+        /** @var Schema $schema */
+        $schema = $db->getSchema();
+
+        if ($schema->getTableSchema($tableName) !== null) {
+            $db->createCommand()->dropTable($tableName)->execute();
+        }
+        $db->createCommand()->createTable($tableName, [
+            'int1' => 'integer',
+        ])->execute();
+
+        $defaultValues = $schema->getTableDefaultValues($tableName, true);
+        $this->assertEmpty($defaultValues);
+
+        $db->createCommand()->addDefaultValue($name, $tableName, 'int1', 41)->execute();
+        $defaultValues = $schema->getTableDefaultValues($tableName, true);
+        $this->assertMatchesRegularExpression('/^.*41.*$/', $defaultValues[0]->value);
+
+        $db->createCommand()->dropDefaultValue($name, $tableName)->execute();
+        $defaultValues = $schema->getTableDefaultValues($tableName, true);
+        $this->assertEmpty($defaultValues);
+    }
+
+    public static function batchInsertSqlProvider(): array
+    {
+        $data = parent::batchInsertSqlProvider();
+        $data['issue11242']['expected'] = 'INSERT INTO [type] ([int_col], [float_col], [char_col]) VALUES (NULL, NULL, \'Kyiv {{city}}, Ukraine\')';
+        $data['wrongBehavior']['expected'] = 'INSERT INTO [type] ([type].[int_col], [float_col], [char_col]) VALUES (\'\', \'\', \'Kyiv {{city}}, Ukraine\')';
+        $data['batchInsert binds params from expression']['expected'] = 'INSERT INTO [type] ([int_col]) VALUES (:qp1)';
+        unset($data['batchIsert empty rows represented by ArrayObject']);
+
+        return $data;
+    }
+
+    public function testUpsertVarbinary(): void
+    {
+        $db = $this->getConnection();
+
+        $qb = $db->getQueryBuilder();
+        $testData = json_encode(['test' => 'string', 'test2' => 'integer'], JSON_THROW_ON_ERROR);
+
+        $params = [];
+
+        $sql = $qb->upsert('T_upsert_varbinary', ['id' => 1, 'blob_col' => $testData], ['blob_col' => $testData], $params);
+        $result = $db->createCommand($sql, $params)->execute();
+
+        $this->assertSame(1, $result);
+
+        $query = (new Query())->select(['blob_col'])->from('T_upsert_varbinary')->where(['id' => 1]);
+        $resultData = $query->createCommand($db)->queryOne();
+
+        $this->assertSame($testData, $resultData['blob_col']);
     }
 }

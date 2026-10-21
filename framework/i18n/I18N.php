@@ -1,8 +1,9 @@
 <?php
+
 /**
- * @link http://www.yiiframework.com/
+ * @link https://www.yiiframework.com/
  * @copyright Copyright (c) 2008 Yii Software LLC
- * @license http://www.yiiframework.com/license/
+ * @license https://www.yiiframework.com/license/
  */
 
 namespace yii\i18n;
@@ -17,9 +18,11 @@ use yii\base\InvalidConfigException;
  * I18N is configured as an application component in [[\yii\base\Application]] by default.
  * You can access that instance via `Yii::$app->i18n`.
  *
- * @property MessageFormatter $messageFormatter The message formatter to be used to format message via ICU
- * message format. Note that the type of this property differs in getter and setter. See
- * [[getMessageFormatter()]] and [[setMessageFormatter()]] for details.
+ * @property-read MessageFormatter $messageFormatter The message formatter to be used to format message via
+ * ICU message format.
+ * @property-write string|array|MessageFormatter $messageFormatter The message formatter to be used to format
+ * message via ICU message format. Can be given as array or string configuration that will be given to
+ * [[Yii::createObject]] to create an instance or a [[MessageFormatter]] instance.
  *
  * @author Qiang Xue <qiang.xue@gmail.com>
  * @since 2.0
@@ -62,6 +65,7 @@ class I18N extends Component
                 'basePath' => '@yii/messages',
             ];
         }
+
         if (!isset($this->translations['app']) && !isset($this->translations['app*'])) {
             $this->translations['app'] = [
                 'class' => 'yii\i18n\PhpMessageSource',
@@ -89,9 +93,9 @@ class I18N extends Component
         $translation = $messageSource->translate($category, $message, $language);
         if ($translation === false) {
             return $this->format($message, $params, $messageSource->sourceLanguage);
-        } else {
-            return $this->format($translation, $params, $language);
         }
+
+        return $this->format($translation, $params, $language);
     }
 
     /**
@@ -109,7 +113,7 @@ class I18N extends Component
             return $message;
         }
 
-        if (preg_match('~{\s*[\w]+\s*,~u', $message)) {
+        if (preg_match('~{\s*[\w.]+\s*,~u', $message)) {
             $formatter = $this->getMessageFormatter();
             $result = $formatter->format($message, $params, $language);
             if ($result === false) {
@@ -117,9 +121,9 @@ class I18N extends Component
                 Yii::warning("Formatting message for language '$language' failed with error: $errorMessage. The message being formatted was: $message.", __METHOD__);
 
                 return $message;
-            } else {
-                return $result;
             }
+
+            return $result;
         }
 
         $p = [];
@@ -172,29 +176,29 @@ class I18N extends Component
             $source = $this->translations[$category];
             if ($source instanceof MessageSource) {
                 return $source;
-            } else {
-                return $this->translations[$category] = Yii::createObject($source);
             }
-        } else {
-            // try wildcard matching
-            foreach ($this->translations as $pattern => $source) {
-                if (strpos($pattern, '*') > 0 && strpos($category, rtrim($pattern, '*')) === 0) {
-                    if ($source instanceof MessageSource) {
-                        return $source;
-                    } else {
-                        return $this->translations[$category] = $this->translations[$pattern] = Yii::createObject($source);
-                    }
-                }
-            }
-            // match '*' in the last
-            if (isset($this->translations['*'])) {
-                $source = $this->translations['*'];
+
+            return $this->translations[$category] = Yii::createObject($source);
+        }
+        // try wildcard matching
+        foreach ($this->translations as $pattern => $source) {
+            if (strpos($pattern, '*') > 0 && strpos($category, rtrim($pattern, '*')) === 0) {
                 if ($source instanceof MessageSource) {
                     return $source;
-                } else {
-                    return $this->translations[$category] = $this->translations['*'] = Yii::createObject($source);
                 }
+
+                return $this->translations[$category] = $this->translations[$pattern] = Yii::createObject($source);
             }
+        }
+
+        // match '*' in the last
+        if (isset($this->translations['*'])) {
+            $source = $this->translations['*'];
+            if ($source instanceof MessageSource) {
+                return $source;
+            }
+
+            return $this->translations[$category] = $this->translations['*'] = Yii::createObject($source);
         }
 
         throw new InvalidConfigException("Unable to locate message source for category '$category'.");

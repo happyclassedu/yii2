@@ -69,10 +69,10 @@ yii migrate/up 5 --migrationTable=migrations
 
 defined('YII_DEBUG') or define('YII_DEBUG', true);
 
-require(__DIR__ . '/vendor/autoload.php');
-require(__DIR__ . '/vendor/yiisoft/yii2/Yii.php');
+require __DIR__ . '/vendor/autoload.php';
+require __DIR__ . '/vendor/yiisoft/yii2/Yii.php';
 
-$config = require(__DIR__ . '/config/console.php');
+$config = require __DIR__ . '/config/console.php';
 
 $application = new yii\console\Application($config);
 $exitCode = $application->run();
@@ -98,10 +98,10 @@ exit($exitCode);
 оновлення ваших тестових баз даних, які налаштовані кожна в окремому наборі тестів. Для динамічної зміни
 конфігурації просто вкажіть потрібний файл конфігурації додатка
 за допомогою опції `appconfig`, коли виконуєте команду:
-```bash
+
+```
 yii <route> --appconfig=path/to/config.php ...
 ```
-
 
 Створення власних консольних команд <span id="create-command"></span>
 -----------------------------------

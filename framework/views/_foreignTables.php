@@ -1,9 +1,10 @@
 <?php
 
 /**
- * Creates a call for the method `yii\db\Migration::createTable()`
+ * Creates a call for the method `yii\db\Migration::createTable()`.
+ *
+ * @var array $foreignKeys the foreign keys
  */
-/* @var $foreignKeys array the foreign keys */
 
 if (!empty($foreignKeys)):?>
  * Has foreign keys to the tables:

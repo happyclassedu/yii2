@@ -1,23 +1,26 @@
 <?php
+
 /**
- * @link http://www.yiiframework.com/
+ * @link https://www.yiiframework.com/
  * @copyright Copyright (c) 2008 Yii Software LLC
- * @license http://www.yiiframework.com/license/
+ * @license https://www.yiiframework.com/license/
  */
 
 namespace yii\filters\auth;
+
+use yii\base\Component;
 
 /**
  * HttpBearerAuth is an action filter that supports the authentication method based on HTTP Bearer token.
  *
  * You may use HttpBearerAuth by attaching it as a behavior to a controller or module, like the following:
  *
- * ```php
+ * ```
  * public function behaviors()
  * {
  *     return [
  *         'bearerAuth' => [
- *             'class' => \yii\filters\auth\HttpBearerAuth::className(),
+ *             'class' => \yii\filters\auth\HttpBearerAuth::class,
  *         ],
  *     ];
  * }
@@ -25,9 +28,20 @@ namespace yii\filters\auth;
  *
  * @author Qiang Xue <qiang.xue@gmail.com>
  * @since 2.0
+ *
+ * @template T of Component = Component
+ * @extends HttpHeaderAuth<T>
  */
-class HttpBearerAuth extends AuthMethod
+class HttpBearerAuth extends HttpHeaderAuth
 {
+    /**
+     * {@inheritdoc}
+     */
+    public $header = 'Authorization';
+    /**
+     * {@inheritdoc}
+     */
+    public $pattern = '/^Bearer\s+(.*?)$/';
     /**
      * @var string the HTTP authentication realm
      */
@@ -35,24 +49,7 @@ class HttpBearerAuth extends AuthMethod
 
 
     /**
-     * @inheritdoc
-     */
-    public function authenticate($user, $request, $response)
-    {
-        $authHeader = $request->getHeaders()->get('Authorization');
-        if ($authHeader !== null && preg_match('/^Bearer\s+(.*?)$/', $authHeader, $matches)) {
-            $identity = $user->loginByAccessToken($matches[1], get_class($this));
-            if ($identity === null) {
-                $this->handleFailure($response);
-            }
-            return $identity;
-        }
-
-        return null;
-    }
-
-    /**
-     * @inheritdoc
+     * {@inheritdoc}
      */
     public function challenge($response)
     {

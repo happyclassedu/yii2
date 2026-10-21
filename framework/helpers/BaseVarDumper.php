@@ -1,8 +1,9 @@
 <?php
+
 /**
- * @link http://www.yiiframework.com/
+ * @link https://www.yiiframework.com/
  * @copyright Copyright (c) 2008 Yii Software LLC
- * @license http://www.yiiframework.com/license/
+ * @license https://www.yiiframework.com/license/
  */
 
 namespace yii\helpers;
@@ -55,7 +56,7 @@ class BaseVarDumper
         self::dumpInternal($var, 0);
         if ($highlight) {
             $result = highlight_string("<?php\n" . self::$_output, true);
-            self::$_output = preg_replace('/&lt;\\?php<br \\/>/', '', $result, 1);
+            self::$_output = preg_replace('/&lt;\\?php(?:<br \\/>|\\n)/', '', $result, 1);
         }
 
         return self::$_output;
@@ -72,10 +73,10 @@ class BaseVarDumper
                 self::$_output .= $var ? 'true' : 'false';
                 break;
             case 'integer':
-                self::$_output .= "$var";
+                self::$_output .= (string)$var;
                 break;
             case 'double':
-                self::$_output .= "$var";
+                self::$_output .= (string)$var;
                 break;
             case 'string':
                 self::$_output .= "'" . addslashes($var) . "'";

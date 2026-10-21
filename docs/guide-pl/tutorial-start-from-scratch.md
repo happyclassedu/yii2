@@ -39,7 +39,7 @@ Na samym końcu zmodyfikuj plik README, aby pasował do szablonu.
 Tworzenie paczki
 ----------------
 
-Nowy szablon umieść w odpowiadającym mu repozytorium Git. Jeśli zamierzasz udostępnić go jako open source, [Github](http://github.com) jest najlepszym miejscem do tego celu. 
+Nowy szablon umieść w odpowiadającym mu repozytorium Git. Jeśli zamierzasz udostępnić go jako open source, [Github](https://github.com) jest najlepszym miejscem do tego celu. 
 Jeśli jednak nie przewidujesz współpracy z innymi nad swoim szablonem, dowolne repozytorium Git będzie odpowiednie.
 
 Następnie należy zarejestrować swoją paczkę dla Composera. Dla publicznie dostępnych szablonów paczkę należy zarejestrować w serwisie [Packagist](https://packagist.org/).
@@ -52,6 +52,6 @@ Użycie szablonu
 Tylko tyle jest wymagane, aby stworzyć nowy szablon projektu Yii. Teraz już możesz rozpocząć pracę nad świeżym projektem, używając swojego szablonu, za pomocą komend:
 
 ```
-composer global require "fxp/composer-asset-plugin:^1.2.0"
+composer global require "fxp/composer-asset-plugin:^1.4.1"
 composer create-project --prefer-dist --stability=dev mojafirma/yii2-app-fajna nowy-projekt
 ```

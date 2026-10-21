@@ -39,7 +39,7 @@ Luego, pasa a modificar la estructura y contenido de la aplicación como te gust
 Hacer un Paquete
 ----------------
 
-Con el template definido, crea un repositorio Git a partir de él, y sube tus archivos ahí. Si tu template va a ser de código abierto, [Github](http://github.com) es el mejor lugar para alojarlo. Si tu intención es que el template no sea colaborativo, cualquier sitio de repositorios Git servirá.
+Con el template definido, crea un repositorio Git a partir de él, y sube tus archivos ahí. Si tu template va a ser de código abierto, [Github](https://github.com) es el mejor lugar para alojarlo. Si tu intención es que el template no sea colaborativo, cualquier sitio de repositorios Git servirá.
 
 Ahora, necesitas registrar tu paquete para Composer. Para templates públicos, el paquete debe ser registrado en [Packagist](https://packagist.org/).
 Para templates privados, es un poco más complicado registrarlo. Puedes ver instrucciones para hacerlo en la [documentación de Composer](https://getcomposer.org/doc/05-repositories.md#hosting-your-own).
@@ -50,6 +50,6 @@ Utilizar el Template
 Eso es todo lo que se necesita para crear un nuevo template de proyecto Yii. Ahora puedes crear tus propios proyectos a partir de este template:
 
 ```
-composer global require "fxp/composer-asset-plugin:^1.2.0"
+composer global require "fxp/composer-asset-plugin:^1.4.1"
 composer create-project --prefer-dist --stability=dev mysoft/yii2-app-coolone new-project
 ```

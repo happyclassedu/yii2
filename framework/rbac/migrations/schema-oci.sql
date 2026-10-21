@@ -3,9 +3,9 @@
  *
  * @author Qiang Xue <qiang.xue@gmail.com>
  * @author Alexander Kochetov <creocoder@gmail.com>
- * @link http://www.yiiframework.com/
+ * @link https://www.yiiframework.com/
  * @copyright 2008 Yii Software LLC
- * @license http://www.yiiframework.com/license/
+ * @license https://www.yiiframework.com/license/
  * @since 2.0
  */
 
@@ -56,3 +56,5 @@ create table "auth_assignment"
    primary key ("item_name","user_id"),
    foreign key ("item_name") references "auth_item" ("name") on delete cascade
 );
+
+CREATE INDEX auth_assignment_user_id_idx ON "auth_assignment" ("user_id");

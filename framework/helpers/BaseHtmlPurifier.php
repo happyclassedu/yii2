@@ -1,8 +1,9 @@
 <?php
+
 /**
- * @link http://www.yiiframework.com/
+ * @link https://www.yiiframework.com/
  * @copyright Copyright (c) 2008 Yii Software LLC
- * @license http://www.yiiframework.com/license/
+ * @license https://www.yiiframework.com/license/
  */
 
 namespace yii\helpers;
@@ -18,7 +19,7 @@ namespace yii\helpers;
 class BaseHtmlPurifier
 {
     /**
-     * Passes markup through HTMLPurifier making it safe to output to end user
+     * Passes markup through HTMLPurifier making it safe to output to end user.
      *
      * @param string $content The HTML content to purify
      * @param array|\Closure|null $config The config to use for HtmlPurifier.
@@ -32,7 +33,7 @@ class BaseHtmlPurifier
      *
      *   Here is a usage example of such a function:
      *
-     *   ```php
+     *   ```
      *   // Allow the HTML5 data attribute `data-type` on `img` elements.
      *   $content = HtmlPurifier::process($content, function ($config) {
      *     $config->getHTMLDefinition(true)

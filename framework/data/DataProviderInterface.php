@@ -1,8 +1,9 @@
 <?php
+
 /**
- * @link http://www.yiiframework.com/
+ * @link https://www.yiiframework.com/
  * @copyright Copyright (c) 2008 Yii Software LLC
- * @license http://www.yiiframework.com/license/
+ * @license https://www.yiiframework.com/license/
  */
 
 namespace yii\data;
@@ -61,12 +62,12 @@ interface DataProviderInterface
     public function getKeys();
 
     /**
-     * @return Sort the sorting object. If this is false, it means the sorting is disabled.
+     * @return Sort|false the sorting object. If this is false, it means the sorting is disabled.
      */
     public function getSort();
 
     /**
-     * @return Pagination the pagination object. If this is false, it means the pagination is disabled.
+     * @return Pagination|false the pagination object. If this is false, it means the pagination is disabled.
      */
     public function getPagination();
 }

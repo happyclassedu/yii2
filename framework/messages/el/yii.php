@@ -1,4 +1,11 @@
 <?php
+
+/**
+ * @link https://www.yiiframework.com/
+ * @copyright Copyright (c) 2008 Yii Software LLC
+ * @license https://www.yiiframework.com/license/
+ */
+
 /**
  * Message translations.
  *
@@ -17,9 +24,14 @@
  * NOTE: this file must be saved in UTF-8 encoding.
  */
 return [
+    ' and ' => ' και ',
+    '"{attribute}" does not support operator "{operator}".' => 'Το "{attribute}" δεν υποστηρίζει τον τελεστή "{operator}".',
     '(not set)' => '(μη ορισμένο)',
+    'Action not found.' => 'Δε βρέθηκε η ενέργεια.',
+    'Aliases available: {aliases}' => 'Διαθέσιμα ψευδώνυμα: {aliases}',
     'An internal server error occurred.' => 'Υπήρξε ένα εσωτερικό σφάλμα του διακομιστή.',
     'Are you sure you want to delete this item?' => 'Είστε σίγουροι για τη διαγραφή του αντικειμένου;',
+    'Condition for "{attribute}" should be either a value or valid operator specification.' => 'Η συνθήκη για το "{attribute}" πρέπει να είναι είτε τιμή είτε προδιαγραφή έγκυρου τελεστή.',
     'Delete' => 'Διαγραφή',
     'Error' => 'Σφάλμα',
     'File upload failed.' => 'Το ανέβασμα του αρχείου απέτυχε.',
@@ -32,6 +44,9 @@ return [
     'No results found.' => 'Δε βρέθηκαν αποτελέσματα.',
     'Only files with these MIME types are allowed: {mimeTypes}.' => 'Επιτρέπονται μόνο αρχεία με τους ακόλουθους τύπους MIME: {mimeTypes}.',
     'Only files with these extensions are allowed: {extensions}.' => 'Επιτρέπονται αρχεία μόνο με καταλήξεις: {extensions}.',
+    'Operator "{operator}" must be used with a search attribute.' => 'Ο τελεστής "{operator}" πρέπει να χρησιμοποιηθεί με μια ιδιότητα για αναζήτηση.',
+    'Operator "{operator}" requires multiple operands.' => 'Ο τελεστής "{operator}" απαιτεί πολλούς τελεστέους.',
+    'Options available: {options}' => 'Διαθέσιμες επιλογές: {options}',
     'Page not found.' => 'Η σελίδα δε βρέθηκε.',
     'Please fix the following errors:' => 'Παρακαλώ διορθώστε τα παρακάτω σφάλματα:',
     'Please upload a file.' => 'Παρακαλώ ανεβάστε ένα αρχείο.',
@@ -41,6 +56,7 @@ return [
     'The file "{file}" is too big. Its size cannot exceed {formattedLimit}.' => 'Το αρχείο «{file}» είναι πολύ μεγάλο. Το μέγεθός του δεν μπορεί να είναι πάνω από {formattedLimit}.',
     'The file "{file}" is too small. Its size cannot be smaller than {formattedLimit}.' => 'Το αρχείο «{file}» είναι πολύ μικρό. Το μέγεθός του δεν μπορεί να είναι μικρότερο από {formattedLimit}.',
     'The format of {attribute} is invalid.' => 'Η μορφή του «{attribute}» δεν είναι έγκυρη.',
+    'The format of {filter} is invalid.' => 'Η μορφή του {filter} δεν είναι έγκυρη.',
     'The image "{file}" is too large. The height cannot be larger than {limit, number} {limit, plural, one{pixel} other{pixels}}.' => 'Η εικόνα «{file}» είναι πολύ μεγάλη. Το ύψος δεν μπορεί να είναι μεγαλύτερο από {limit, number} {limit, plural, one{pixel} few{pixels} many{pixels} other{pixels}}.',
     'The image "{file}" is too large. The width cannot be larger than {limit, number} {limit, plural, one{pixel} other{pixels}}.' => 'Η εικόνα «{file}» είναι πολύ μεγάλη. Το πλάτος δεν μπορεί να είναι μεγαλύτερο από {limit, number} {limit, plural, one{pixel} few{pixels} many{pixels} other{pixels}}.',
     'The image "{file}" is too small. The height cannot be smaller than {limit, number} {limit, plural, one{pixel} other{pixels}}.' => 'Η εικόνα «{file}» είναι πολύ μικρή. To ύψος δεν μπορεί να είναι μικρότερο από {limit, number} {limit, plural, one{pixel} few{pixels} many{pixels} other{pixels}}.',
@@ -50,12 +66,14 @@ return [
     'Total <b>{count, number}</b> {count, plural, one{item} other{items}}.' => 'Συνολικά <b>{count, number}</b> {count, plural, one{αντικείμενο} few{αντικείμενα} many{αντικείμενα} other{αντικείμενα}}.',
     'Unable to verify your data submission.' => 'Δεν ήταν δυνατή η επαλήθευση των απεσταλμένων δεδομένων.',
     'Unknown alias: -{name}' => 'Άγνωστο ψευδώνυμο: -{name}',
+    'Unknown filter attribute "{attribute}"' => 'Άγνωστη ιδιότητα φίλτρου "{attribute}"',
     'Unknown option: --{name}' => 'Άγνωστη επιλογή: --{name}',
     'Update' => 'Ενημέρωση',
     'View' => 'Προβολή',
     'Yes' => 'Ναι',
     'You are not allowed to perform this action.' => 'Δεν επιτρέπεται να εκτελέσετε αυτή την ενέργεια.',
     'You can upload at most {limit, number} {limit, plural, one{file} other{files}}.' => 'Μπορείτε να ανεβάσετε το πολύ {limit, number} {limit, plural, one{αρχείο} few{αρχεία} many{αρχεία} other{αρχεία}}.',
+    'You should upload at least {limit, number} {limit, plural, one{file} other{files}}.' => 'Θα πρέπει να ανεβάσετε τουλάχιστον {limit, number} {limit, plural, one{αρχείο} other{αρχεία}}.',
     'in {delta, plural, =1{a day} other{# days}}' => 'σε {delta, plural, =1{μία ημέρα} other{# ημέρες}}',
     'in {delta, plural, =1{a minute} other{# minutes}}' => 'σε {delta, plural, =1{ένα λεπτό} other{# λεπτά}}',
     'in {delta, plural, =1{a month} other{# months}}' => 'σε {delta, plural, =1{ένα μήνα} other{# μήνες}}',
@@ -92,6 +110,7 @@ return [
     '{attribute} should contain at least {min, number} {min, plural, one{character} other{characters}}.' => 'Το «{attribute}» πρέπει να περιέχει τουλάχιστον {min, number} {min, plural, one{χαρακτήρα} few{χαρακτήρες} many{χαρακτήρες} other{χαρακτήρες}}.',
     '{attribute} should contain at most {max, number} {max, plural, one{character} other{characters}}.' => 'Το «{attribute}» πρέπει να περιέχει το πολύ {max, number} {max, plural, one{χαρακτήρα} few{χαρακτήρες} many{χαρακτήρες} other{χαρακτήρες}}.',
     '{attribute} should contain {length, number} {length, plural, one{character} other{characters}}.' => 'Το «{attribute}» πρέπει να περιέχει {length, number} {length, plural, one{χαρακτήρα} few{χαρακτήρες} many{χαρακτήρες} other{χαρακτήρες}}.',
+    '{compareAttribute} is invalid.' => '',
     '{delta, plural, =1{1 day} other{# days}}' => '{delta, plural, =1{1 ημέρα} other{# ημέρες}}',
     '{delta, plural, =1{1 hour} other{# hours}}' => '{delta, plural, =1{1 ώρα} other{# ώρες}}',
     '{delta, plural, =1{1 minute} other{# minutes}}' => '{delta, plural, =1{1 λεπτό} other{# λεπτά}}',
@@ -107,7 +126,6 @@ return [
     '{nFormatted} B' => '{nFormatted} B',
     '{nFormatted} GB' => '{nFormatted} GB',
     '{nFormatted} GiB' => '{nFormatted} GiB',
-    '{nFormatted} KB' => '{nFormatted} KB',
     '{nFormatted} KiB' => '{nFormatted} KiB',
     '{nFormatted} MB' => '{nFormatted} MB',
     '{nFormatted} MiB' => '{nFormatted} MiB',
@@ -115,6 +133,7 @@ return [
     '{nFormatted} PiB' => '{nFormatted} PiB',
     '{nFormatted} TB' => '{nFormatted} TB',
     '{nFormatted} TiB' => '{nFormatted} TiB',
+    '{nFormatted} kB' => '{nFormatted} kB',
     '{nFormatted} {n, plural, =1{byte} other{bytes}}' => '{nFormatted} {n, plural, =1{byte} other{bytes}}',
     '{nFormatted} {n, plural, =1{gibibyte} other{gibibytes}}' => '{nFormatted} {n, plural, =1{gibibyte} other{gibibytes}}',
     '{nFormatted} {n, plural, =1{gigabyte} other{gigabytes}}' => '{nFormatted} {n, plural, =1{gigabyte} other{gigabytes}}',

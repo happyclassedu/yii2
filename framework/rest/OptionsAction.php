@@ -1,12 +1,14 @@
 <?php
+
 /**
- * @link http://www.yiiframework.com/
+ * @link https://www.yiiframework.com/
  * @copyright Copyright (c) 2008 Yii Software LLC
- * @license http://www.yiiframework.com/license/
+ * @license https://www.yiiframework.com/license/
  */
 
 namespace yii\rest;
 
+use yii\base\Action as BaseAction;
 use Yii;
 
 /**
@@ -16,8 +18,11 @@ use Yii;
  *
  * @author Qiang Xue <qiang.xue@gmail.com>
  * @since 2.0
+ *
+ * @template T of Controller = Controller
+ * @extends BaseAction<T>
  */
-class OptionsAction extends \yii\base\Action
+class OptionsAction extends BaseAction
 {
     /**
      * @var array the HTTP verbs that are supported by the collection URL
@@ -31,7 +36,7 @@ class OptionsAction extends \yii\base\Action
 
     /**
      * Responds to the OPTIONS request.
-     * @param string $id
+     * @param string|null $id
      */
     public function run($id = null)
     {
@@ -39,6 +44,8 @@ class OptionsAction extends \yii\base\Action
             Yii::$app->getResponse()->setStatusCode(405);
         }
         $options = $id === null ? $this->collectionOptions : $this->resourceOptions;
-        Yii::$app->getResponse()->getHeaders()->set('Allow', implode(', ', $options));
+        $headers = Yii::$app->getResponse()->getHeaders();
+        $headers->set('Allow', implode(', ', $options));
+        $headers->set('Access-Control-Allow-Methods', implode(', ', $options));
     }
 }

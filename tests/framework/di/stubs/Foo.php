@@ -1,19 +1,20 @@
 <?php
+
 /**
- * @link http://www.yiiframework.com/
+ * @link https://www.yiiframework.com/
  * @copyright Copyright (c) 2008 Yii Software LLC
- * @license http://www.yiiframework.com/license/
+ * @license https://www.yiiframework.com/license/
  */
 
 namespace yiiunit\framework\di\stubs;
 
-use yii\base\Object;
+use yii\base\BaseObject;
 
 /**
  * @author Qiang Xue <qiang.xue@gmail.com>
  * @since 2.0
  */
-class Foo extends Object
+class Foo extends BaseObject
 {
     public $bar;
 

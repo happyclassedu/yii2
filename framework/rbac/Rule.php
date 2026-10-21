@@ -1,13 +1,14 @@
 <?php
+
 /**
- * @link http://www.yiiframework.com/
+ * @link https://www.yiiframework.com/
  * @copyright Copyright (c) 2008 Yii Software LLC
- * @license http://www.yiiframework.com/license/
+ * @license https://www.yiiframework.com/license/
  */
 
 namespace yii\rbac;
 
-use yii\base\Object;
+use yii\base\BaseObject;
 
 /**
  * Rule represents a business constraint that may be associated with a role, permission or assignment.
@@ -17,7 +18,7 @@ use yii\base\Object;
  * @author Alexander Makarov <sam@rmcreative.ru>
  * @since 2.0
  */
-abstract class Rule extends Object
+abstract class Rule extends BaseObject
 {
     /**
      * @var string name of the rule

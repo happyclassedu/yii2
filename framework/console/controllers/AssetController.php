@@ -1,15 +1,18 @@
 <?php
+
 /**
- * @link http://www.yiiframework.com/
+ * @link https://www.yiiframework.com/
  * @copyright Copyright (c) 2008 Yii Software LLC
- * @license http://www.yiiframework.com/license/
+ * @license https://www.yiiframework.com/license/
  */
 
 namespace yii\console\controllers;
 
 use Yii;
-use yii\console\Exception;
+use yii\console\Application;
 use yii\console\Controller;
+use yii\console\Exception;
+use yii\console\ExitCode;
 use yii\helpers\Console;
 use yii\helpers\FileHelper;
 use yii\helpers\VarDumper;
@@ -31,18 +34,22 @@ use yii\web\AssetBundle;
  *
  * 4. Adjust your web application config to use compressed assets.
  *
- * Note: in the console environment some path aliases like `@webroot` and `@web` may not exist,
+ * Note: in the console environment some [path aliases](guide:concept-aliases) like `@webroot` and `@web` may not exist,
  * so corresponding paths inside the configuration should be specified directly.
  *
  * Note: by default this command relies on an external tools to perform actual files compression,
  * check [[jsCompressor]] and [[cssCompressor]] for more details.
  *
- * @property \yii\web\AssetManager $assetManager Asset manager instance. Note that the type of this property
- * differs in getter and setter. See [[getAssetManager()]] and [[setAssetManager()]] for details.
+ * @property-read \yii\web\AssetManager $assetManager Asset manager instance.
+ * @property-write \yii\web\AssetManager|array $assetManager Asset manager instance or its array
+ * configuration.
  *
  * @author Qiang Xue <qiang.xue@gmail.com>
  * @author Paul Klimov <klimov.paul@gmail.com>
  * @since 2.0
+ *
+ * @template T of Application = Application
+ * @extends Controller<T>
  */
 class AssetController extends Controller
 {
@@ -59,7 +66,7 @@ class AssetController extends Controller
      * You can specify the name of the output compressed file using 'css' and 'js' keys:
      * For example:
      *
-     * ```php
+     * ```
      * 'app\config\AllAsset' => [
      *     'js' => 'js/all-{hash}.js',
      *     'css' => 'css/all-{hash}.css',
@@ -75,7 +82,7 @@ class AssetController extends Controller
      * bundles in this case.
      * For example:
      *
-     * ```php
+     * ```
      * 'allShared' => [
      *     'js' => 'js/all-shared-{hash}.js',
      *     'css' => 'css/all-shared-{hash}.css',
@@ -216,7 +223,8 @@ class AssetController extends Controller
     protected function loadConfiguration($configFile)
     {
         $this->stdout("Loading configuration from '{$configFile}'...\n");
-        foreach (require($configFile) as $name => $value) {
+        $config = require $configFile;
+        foreach ($config as $name => $value) {
             if (property_exists($this, $name) || $this->canSetProperty($name)) {
                 $this->$name = $value;
             } else {
@@ -320,9 +328,9 @@ class AssetController extends Controller
             usort($target['depends'], function ($a, $b) use ($bundleOrders) {
                 if ($bundleOrders[$a] == $bundleOrders[$b]) {
                     return 0;
-                } else {
-                    return $bundleOrders[$a] > $bundleOrders[$b] ? 1 : -1;
                 }
+
+                return $bundleOrders[$a] > $bundleOrders[$b] ? 1 : -1;
             });
             if (!isset($target['class'])) {
                 $target['class'] = $name;
@@ -482,7 +490,7 @@ class AssetController extends Controller
             }
         }
         $array = VarDumper::export($array);
-        $version = date('Y-m-d H:i:s', time());
+        $version = date('Y-m-d H:i:s');
         $bundleFileContent = <<<EOD
 <?php
 /**
@@ -492,7 +500,7 @@ class AssetController extends Controller
  */
 return {$array};
 EOD;
-        if (!file_put_contents($bundleFile, $bundleFileContent)) {
+        if (!file_put_contents($bundleFile, $bundleFileContent, LOCK_EX)) {
             throw new Exception("Unable to write output bundle configuration at '{$bundleFile}'.");
         }
         $this->stdout("Output bundle configuration created at '{$bundleFile}'.\n", Console::FG_GREEN);
@@ -513,7 +521,7 @@ EOD;
         if (is_string($this->jsCompressor)) {
             $tmpFile = $outputFile . '.tmp';
             $this->combineJsFiles($inputFiles, $tmpFile);
-            $this->stdout(shell_exec(strtr($this->jsCompressor, [
+            $this->stdout((string)shell_exec(strtr($this->jsCompressor, [
                 '{from}' => escapeshellarg($tmpFile),
                 '{to}' => escapeshellarg($outputFile),
             ])));
@@ -542,7 +550,7 @@ EOD;
         if (is_string($this->cssCompressor)) {
             $tmpFile = $outputFile . '.tmp';
             $this->combineCssFiles($inputFiles, $tmpFile);
-            $this->stdout(shell_exec(strtr($this->cssCompressor, [
+            $this->stdout((string)shell_exec(strtr($this->cssCompressor, [
                 '{from}' => escapeshellarg($tmpFile),
                 '{to}' => escapeshellarg($outputFile),
             ])));
@@ -566,8 +574,14 @@ EOD;
     {
         $content = '';
         foreach ($inputFiles as $file) {
+            // Add a semicolon to source code if trailing semicolon missing.
+            // Notice: It needs a new line before `;` to avoid affection of line comment. (// ...;)
+            $fileContent = rtrim(file_get_contents($file));
+            if (substr($fileContent, -1) !== ';') {
+                $fileContent .= "\n;";
+            }
             $content .= "/*** BEGIN FILE: $file ***/\n"
-                . file_get_contents($file)
+                . $fileContent . "\n"
                 . "/*** END FILE: $file ***/\n";
         }
         if (!file_put_contents($outputFile, $content)) {
@@ -612,7 +626,7 @@ EOD;
         $inputFilePathPartsCount = count($inputFilePathParts);
         $outputFilePathParts = explode('/', $outputFilePath);
         $outputFilePathPartsCount = count($outputFilePathParts);
-        for ($i =0; $i < $inputFilePathPartsCount && $i < $outputFilePathPartsCount; $i++) {
+        for ($i = 0; $i < $inputFilePathPartsCount && $i < $outputFilePathPartsCount; $i++) {
             if ($inputFilePathParts[$i] == $outputFilePathParts[$i]) {
                 $sharedPathParts[] = $inputFilePathParts[$i];
             } else {
@@ -638,7 +652,7 @@ EOD;
             $fullMatch = $matches[0];
             $inputUrl = $matches[1];
 
-            if (strpos($inputUrl, '/') === 0 || strpos($inputUrl, '#') === 0 || preg_match('/^https?:\/\//i', $inputUrl) || preg_match('/^data:/i', $inputUrl)) {
+            if (strncmp($inputUrl, '/', 1) === 0 || strncmp($inputUrl, '#', 1) === 0 || preg_match('/^https?:\/\//i', $inputUrl) || preg_match('/^data:/i', $inputUrl)) {
                 return $fullMatch;
             }
             if ($inputFileRelativePathParts === $outputFileRelativePathParts) {
@@ -669,7 +683,7 @@ EOD;
             return str_replace($inputUrl, $outputUrl, $fullMatch);
         };
 
-        $cssContent = preg_replace_callback('/url\(["\']?([^)^"^\']*)["\']?\)/i', $callback, $cssContent);
+        $cssContent = preg_replace_callback('/url\(["\']?([^)^"\']*)["\']?\)/i', $callback, $cssContent);
 
         return $cssContent;
     }
@@ -727,15 +741,15 @@ return [
 EOD;
         if (file_exists($configFile)) {
             if (!$this->confirm("File '{$configFile}' already exists. Do you wish to overwrite it?")) {
-                return self::EXIT_CODE_NORMAL;
+                return ExitCode::OK;
             }
         }
-        if (!file_put_contents($configFile, $template)) {
+        if (!file_put_contents($configFile, $template, LOCK_EX)) {
             throw new Exception("Unable to write template file '{$configFile}'.");
-        } else {
-            $this->stdout("Configuration file template created at '{$configFile}'.\n\n", Console::FG_GREEN);
-            return self::EXIT_CODE_NORMAL;
         }
+
+        $this->stdout("Configuration file template created at '{$configFile}'.\n\n", Console::FG_GREEN);
+        return ExitCode::OK;
     }
 
     /**
@@ -757,6 +771,7 @@ EOD;
                 $realPathParts[] = $pathPart;
             }
         }
+
         return implode(DIRECTORY_SEPARATOR, $realPathParts);
     }
 
@@ -766,7 +781,7 @@ EOD;
      */
     private function isBundleExternal($bundle)
     {
-        return (empty($bundle->sourcePath) && empty($bundle->basePath));
+        return empty($bundle->sourcePath) && empty($bundle->basePath);
     }
 
     /**

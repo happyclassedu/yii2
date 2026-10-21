@@ -1,32 +1,56 @@
 <?php
 
 /**
- * @link http://www.yiiframework.com/
+ * @link https://www.yiiframework.com/
  * @copyright Copyright (c) 2008 Yii Software LLC
- * @license http://www.yiiframework.com/license/
+ * @license https://www.yiiframework.com/license/
  */
+
+declare(strict_types=1);
 
 namespace yiiunit\data\ar;
 
+use Exception;
+
 /**
- * Class Cat
+ * Class Cat.
+ *
+ * @property-read float|int $exception
+ * @property-read float|int $throwable
  *
  * @author Jose Lorente <jose.lorente.martin@gmail.com>
  * @since 2.0
  */
 class Cat extends Animal
 {
-
     /**
-     *
      * @param self $record
      * @param array $row
      */
-    public static function populateRecord($record, $row)
+    public static function populateRecord($record, $row): void
     {
         parent::populateRecord($record, $row);
 
         $record->does = 'meow';
     }
 
+    /**
+     * This is to test if __isset catches the exception.
+     * @throws DivisionByZeroError
+     * @return float|int
+     */
+    public function getException()
+    {
+        throw new Exception('no');
+    }
+
+    /**
+     * This is to test if __isset catches the error.
+     * @throws DivisionByZeroError
+     * @return float|int
+     */
+    public function getThrowable()
+    {
+        return 5 / 0;
+    }
 }

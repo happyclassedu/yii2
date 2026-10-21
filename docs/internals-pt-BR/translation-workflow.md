@@ -15,7 +15,7 @@ para o usuário final, tais como erros de validação.
 Os passos para iniciar a tradução de mensagens são:
 
 1. Com o `console` entre na pasta `yii2/framework`  e execute o seguinte comando:
-   `yii message/extract messages/config.php`.
+   `./yii message/extract @yii/messages/config.php --languages=pt-BR`.
 2. As mensagens a serem traduzidas encontram-se no seguinte caminho:
    `framework/messages/pt-BR/yii.php`. Certifique-se de salvar o arquivo com a
    codificação UTF-8 (Plain).
@@ -26,7 +26,7 @@ Os passos para iniciar a tradução de mensagens são:
 
 Para manter as traduções sempre atualizadas, certifique-se que seu fork do Yii
 esteja com a última versão. Em seguida, basta executar o comando
-`yii message/extract messages/config.php` novamente e o mesmo irá adicionar
+`./yii message/extract @yii/messages/config.php --languages=pt-BR` novamente e o mesmo irá adicionar
 automaticamente as novas mensagens a serem traduzidas.
 
 No arquivo de tradução cada elemento do array representa a tradução de uma
@@ -68,7 +68,7 @@ Regras e Observações
   *itálico*, isso ajudará na revisão.
 - Para reduzir erros de digitação você pode utilizar um editor de texto como o
   MS Word para escrever pequenos blocos textos e em seguida copiar estes blocos
-  para um editor visual de Markdown como o http://dillinger.io/.
+  para um editor visual de Markdown como o https://dillinger.io/.
 
 ### Convenções Para Tradução
 

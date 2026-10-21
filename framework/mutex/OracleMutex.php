@@ -1,8 +1,9 @@
 <?php
+
 /**
- * @link http://www.yiiframework.com/
+ * @link https://www.yiiframework.com/
  * @copyright Copyright (c) 2008 Yii Software LLC
- * @license http://www.yiiframework.com/license/
+ * @license https://www.yiiframework.com/license/
  */
 
 namespace yii\mutex;
@@ -33,7 +34,7 @@ use yii\base\InvalidConfigException;
  * ]
  * ```
  *
- * @see http://docs.oracle.com/cd/B19306_01/appdev.102/b14258/d_lock.htm
+ * @see https://docs.oracle.com/cd/B19306_01/appdev.102/b14258/d_lock.htm#ARPLS021
  * @see Mutex
  *
  * @author Alexander Zlakomanov <zlakomanoff@gmail.com>
@@ -42,16 +43,15 @@ use yii\base\InvalidConfigException;
 class OracleMutex extends DbMutex
 {
     /** available lock modes */
-    const MODE_X = 'X_MODE';
-    const MODE_NL = 'NL_MODE';
-    const MODE_S = 'S_MODE';
-    const MODE_SX = 'SX_MODE';
-    const MODE_SS = 'SS_MODE';
-    const MODE_SSX = 'SSX_MODE';
-
+    public const MODE_X = 'X_MODE';
+    public const MODE_NL = 'NL_MODE';
+    public const MODE_S = 'S_MODE';
+    public const MODE_SX = 'SX_MODE';
+    public const MODE_SS = 'SS_MODE';
+    public const MODE_SSX = 'SSX_MODE';
     /**
      * @var string lock mode to be used.
-     * @see http://docs.oracle.com/cd/B19306_01/appdev.102/b14258/d_lock.htm#CHDBCFDI
+     * @see https://docs.oracle.com/cd/B19306_01/appdev.102/b14258/d_lock.htm#ARPLS021#CHDBCFDI
      */
     public $lockMode = self::MODE_X;
     /**
@@ -67,28 +67,30 @@ class OracleMutex extends DbMutex
     public function init()
     {
         parent::init();
-        if (strpos($this->db->driverName, 'oci') !== 0 && strpos($this->db->driverName, 'odbc') !== 0) {
+        if (strncmp($this->db->driverName, 'oci', 3) !== 0 && strncmp($this->db->driverName, 'odbc', 4) !== 0) {
             throw new InvalidConfigException('In order to use OracleMutex connection must be configured to use Oracle database.');
         }
     }
 
     /**
      * Acquires lock by given name.
-     * @see http://docs.oracle.com/cd/B19306_01/appdev.102/b14258/d_lock.htm
+     * @see https://docs.oracle.com/cd/B19306_01/appdev.102/b14258/d_lock.htm#ARPLS021
      * @param string $name of the lock to be acquired.
-     * @param int $timeout to wait for lock to become released.
+     * @param int $timeout time (in seconds) to wait for lock to become released.
      * @return bool acquiring result.
      */
     protected function acquireLock($name, $timeout = 0)
     {
         $lockStatus = null;
 
-        /** clean vars before using */
+        // clean vars before using
         $releaseOnCommit = $this->releaseOnCommit ? 'TRUE' : 'FALSE';
-        $timeout = abs((int)$timeout);
+        $timeout = abs((int) $timeout);
 
-        /** inside pl/sql scopes pdo binding not working correctly :(  */
-        $this->db->createCommand(
+        // inside pl/sql scopes pdo binding not working correctly :(
+        $this->db->useMaster(function ($db) use ($name, $timeout, $releaseOnCommit, &$lockStatus) {
+            /** @var \yii\db\Connection $db */
+            $db->createCommand(
                 'DECLARE
     handle VARCHAR2(128);
 BEGIN
@@ -99,20 +101,23 @@ END;',
             )
             ->bindParam(':lockStatus', $lockStatus, PDO::PARAM_INT, 1)
             ->execute();
+        });
 
-        return ($lockStatus === 0 || $lockStatus === '0');
+        return $lockStatus === 0 || $lockStatus === '0';
     }
 
     /**
      * Releases lock by given name.
      * @param string $name of the lock to be released.
      * @return bool release result.
-     * @see http://docs.oracle.com/cd/B19306_01/appdev.102/b14258/d_lock.htm
+     * @see https://docs.oracle.com/cd/B19306_01/appdev.102/b14258/d_lock.htm#ARPLS021
      */
     protected function releaseLock($name)
     {
         $releaseStatus = null;
-        $this->db->createCommand(
+        $this->db->useMaster(function ($db) use ($name, &$releaseStatus) {
+            /** @var \yii\db\Connection $db */
+            $db->createCommand(
                 'DECLARE
     handle VARCHAR2(128);
 BEGIN
@@ -123,7 +128,8 @@ END;',
             )
             ->bindParam(':result', $releaseStatus, PDO::PARAM_INT, 1)
             ->execute();
+        });
 
-        return ($releaseStatus === 0 || $releaseStatus === '0');
+        return $releaseStatus === 0 || $releaseStatus === '0';
     }
 }

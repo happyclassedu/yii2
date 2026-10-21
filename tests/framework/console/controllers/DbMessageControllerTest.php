@@ -1,11 +1,29 @@
 <?php
+
+/**
+ * @link https://www.yiiframework.com/
+ * @copyright Copyright (c) 2008 Yii Software LLC
+ * @license https://www.yiiframework.com/license/
+ */
+
 namespace yiiunit\framework\console\controllers;
 
+use yii\console\Application;
+use yii\console\Controller;
+use yii\helpers\ArrayHelper;
+use yii\db\Query;
+use yii\db\Expression;
+use yii\base\InvalidParamException;
+use yii\db\Exception;
+use yii\base\InvalidConfigException;
 use Yii;
 use yii\db\Connection;
 
 /**
  * Tests that [[\yii\console\controllers\MessageController]] works as expected with DB message format.
+ *
+ * @group db
+ * @group mysql
  */
 class DbMessageControllerTest extends BaseMessageControllerTest
 {
@@ -20,11 +38,11 @@ class DbMessageControllerTest extends BaseMessageControllerTest
     protected static function runConsoleAction($route, $params = [])
     {
         if (Yii::$app === null) {
-            new \yii\console\Application([
+            new Application([
                 'id' => 'Migrator',
                 'basePath' => '@yiiunit',
                 'controllerMap' => [
-                    'migrate' => EchoMigrateController::className(),
+                    'migrate' => EchoMigrateController::class,
                 ],
                 'components' => [
                     'db' => static::getConnection(),
@@ -34,15 +52,15 @@ class DbMessageControllerTest extends BaseMessageControllerTest
 
         ob_start();
         $result = Yii::$app->runAction($route, $params);
-        echo "Result is " . $result;
-        if ($result !== \yii\console\Controller::EXIT_CODE_NORMAL) {
+        echo 'Result is ' . $result;
+        if ($result !== Controller::EXIT_CODE_NORMAL) {
             ob_end_flush();
         } else {
             ob_end_clean();
         }
     }
 
-    public static function setUpBeforeClass()
+    public static function setUpBeforeClass(): void
     {
         parent::setUpBeforeClass();
         $databases = static::getParam('databases');
@@ -56,7 +74,7 @@ class DbMessageControllerTest extends BaseMessageControllerTest
         static::runConsoleAction('migrate/up', ['migrationPath' => '@yii/i18n/migrations/', 'interactive' => false]);
     }
 
-    public static function tearDownAfterClass()
+    public static function tearDownAfterClass(): void
     {
         static::runConsoleAction('migrate/down', ['migrationPath' => '@yii/i18n/migrations/', 'interactive' => false]);
         if (static::$db) {
@@ -66,22 +84,22 @@ class DbMessageControllerTest extends BaseMessageControllerTest
         parent::tearDownAfterClass();
     }
 
-    public function tearDown()
+    protected function tearDown(): void
     {
         parent::tearDown();
         Yii::$app = null;
     }
 
     /**
-     * @throws \yii\base\InvalidParamException
-     * @throws \yii\db\Exception
-     * @throws \yii\base\InvalidConfigException
-     * @return \yii\db\Connection
+     * @throws InvalidParamException
+     * @throws Exception
+     * @throws InvalidConfigException
+     * @return Connection
      */
     public static function getConnection()
     {
         if (static::$db == null) {
-            $db = new Connection;
+            $db = new Connection();
             $db->dsn = static::$database['dsn'];
             if (isset(static::$database['username'])) {
                 $db->username = static::$database['username'];
@@ -95,11 +113,12 @@ class DbMessageControllerTest extends BaseMessageControllerTest
             }
             static::$db = $db;
         }
+
         return static::$db;
     }
 
     /**
-     * @inheritdoc
+     * {@inheritdoc}
      */
     protected function getDefaultConfig()
     {
@@ -108,12 +127,12 @@ class DbMessageControllerTest extends BaseMessageControllerTest
             'languages' => [$this->language],
             'sourcePath' => $this->sourcePath,
             'overwrite' => true,
-            'db' => static::$db
+            'db' => static::$db,
         ];
     }
 
     /**
-     * @inheritdoc
+     * {@inheritdoc}
      */
     protected function saveMessages($messages, $category)
     {
@@ -124,26 +143,26 @@ class DbMessageControllerTest extends BaseMessageControllerTest
         foreach ($messages as $source => $translation) {
             $lastPk = static::$db->schema->insert('source_message', [
                 'category' => $category,
-                'message' => $source
+                'message' => $source,
             ]);
             static::$db->createCommand()->insert('message', [
                 'id' => $lastPk['id'],
                 'language' => $this->language,
-                'translation' => $translation
+                'translation' => $translation,
             ])->execute();
         }
     }
 
     /**
-     * @inheritdoc
+     * {@inheritdoc}
      */
     protected function loadMessages($category)
     {
-        return \yii\helpers\ArrayHelper::map((new \yii\db\Query())
+        return ArrayHelper::map((new Query())
             ->select(['message' => 't1.message', 'translation' => 't2.translation'])
             ->from(['t1' => 'source_message', 't2' => 'message'])
             ->where([
-                't1.id' => new \yii\db\Expression('[[t2.id]]'),
+                't1.id' => new Expression('[[t2.id]]'),
                 't1.category' => $category,
                 't2.language' => $this->language,
             ])->all(static::$db), 'message', 'translation');
@@ -155,7 +174,7 @@ class DbMessageControllerTest extends BaseMessageControllerTest
      * Source is marked instead of translation.
      * @depends testMerge
      */
-    public function testMarkObsoleteMessages()
+    public function testMarkObsoleteMessages(): void
     {
         $category = 'category';
 
@@ -175,5 +194,10 @@ class DbMessageControllerTest extends BaseMessageControllerTest
 
         $this->assertArrayHasKey($obsoleteMessage, $messages, "Obsolete message should not be removed. Command output:\n\n" . $out);
         $this->assertEquals($obsoleteTranslation, $messages[$obsoleteMessage], "Obsolete message was not marked properly. Command output:\n\n" . $out);
+    }
+
+    public function testMessagesSorting(): void
+    {
+        $this->markTestSkipped('There\'s no need to order messages for database');
     }
 }

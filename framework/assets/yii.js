@@ -1,9 +1,9 @@
 /**
  * Yii JavaScript module.
  *
- * @link http://www.yiiframework.com/
+ * @link https://www.yiiframework.com/
  * @copyright Copyright (c) 2008 Yii Software LLC
- * @license http://www.yiiframework.com/license/
+ * @license https://www.yiiframework.com/license/
  * @author Qiang Xue <qiang.xue@gmail.com>
  * @since 2.0
  */
@@ -57,7 +57,7 @@ window.yii = (function ($) {
          * The selector for clickable elements that need to support confirmation and form submission.
          */
         clickableSelector: 'a, button, input[type="submit"], input[type="button"], input[type="reset"], ' +
-        'input[type="image"]',
+            'input[type="image"]',
         /**
          * The selector for changeable elements that need to support confirmation and form submission.
          */
@@ -160,12 +160,28 @@ window.yii = (function ($) {
                 pjax = $e.data('pjax'),
                 usePjax = pjax !== undefined && pjax !== 0 && $.support.pjax,
                 pjaxContainer,
-                pjaxOptions = {};
+                pjaxOptions = {},
+                conflictParams = ['submit', 'reset', 'elements', 'length', 'name', 'acceptCharset',
+                    'action', 'enctype', 'method', 'target'];
+
+            // Forms and their child elements should not use input names or ids that conflict with properties of a form,
+            // such as submit, length, or method.
+            $.each(conflictParams, function (index, param) {
+                if (areValidParams && params.hasOwnProperty(param)) {
+                    console.error("Parameter name '" + param + "' conflicts with a same named form property. " +
+                        "Please use another name.");
+                }
+            });
 
             if (usePjax) {
-                pjaxContainer = $e.data('pjax-container') || $e.closest('[data-pjax-container]');
+                pjaxContainer = $e.data('pjax-container');
+                if (pjaxContainer === undefined || !pjaxContainer.length) {
+                    pjaxContainer = $e.closest('[data-pjax-container]').attr('id')
+                        ? ('#' + $e.closest('[data-pjax-container]').attr('id'))
+                        : '';
+                }
                 if (!pjaxContainer.length) {
-                    pjaxContainer = $('body');
+                    pjaxContainer = 'body';
                 }
                 pjaxOptions = {
                     container: pjaxContainer,
@@ -248,7 +264,7 @@ window.yii = (function ($) {
 
             $form.trigger('submit');
 
-            $.when($form.data('yiiSubmitFinalizePromise')).then(function () {
+            $.when($form.data('yiiSubmitFinalizePromise')).done(function () {
                 if (newForm) {
                     $form.remove();
                     return;
@@ -273,13 +289,15 @@ window.yii = (function ($) {
                 return {};
             }
 
-            var pairs = url.substring(pos + 1).split('#')[0].split('&'),
-                params = {};
+            var pairs = $.grep(url.substring(pos + 1).split('#')[0].split('&'), function (value) {
+                return value !== '';
+            });
+            var params = {};
 
             for (var i = 0, len = pairs.length; i < len; i++) {
                 var pair = pairs[i].split('=');
                 var name = decodeURIComponent(pair[0].replace(/\+/g, '%20'));
-                var value = decodeURIComponent(pair[1].replace(/\+/g, '%20'));
+                var value = pair.length > 1 ? decodeURIComponent(pair[1].replace(/\+/g, '%20')) : '';
                 if (!name.length) {
                     continue;
                 }
@@ -292,6 +310,7 @@ window.yii = (function ($) {
                     params[name].push(value || '');
                 }
             }
+
             return params;
         },
 
@@ -334,7 +353,8 @@ window.yii = (function ($) {
         }
     };
 
-    function initCsrfHandler() {
+    function initCsrfHandler()
+    {
         // automatically send CSRF token for all AJAX requests
         $.ajaxPrefilter(function (options, originalOptions, xhr) {
             if (!options.crossDomain && pub.getCsrfParam()) {
@@ -344,7 +364,8 @@ window.yii = (function ($) {
         pub.refreshCsrfToken();
     }
 
-    function initRedirectHandler() {
+    function initRedirectHandler()
+    {
         // handle AJAX redirection
         $(document).ajaxComplete(function (event, xhr) {
             var url = xhr && xhr.getResponseHeader('X-Redirect');
@@ -354,7 +375,8 @@ window.yii = (function ($) {
         });
     }
 
-    function initAssetFilters() {
+    function initAssetFilters()
+    {
         /**
          * Used for storing loaded scripts and information about loading each script if it's in the process of loading.
          * A single script can have one of the following values:
@@ -453,7 +475,8 @@ window.yii = (function ($) {
         });
     }
 
-    function initDataMethods() {
+    function initDataMethods()
+    {
         var handler = function (event) {
             var $this = $(this),
                 method = $this.data('method'),
@@ -464,7 +487,7 @@ window.yii = (function ($) {
                 return true;
             }
 
-            if (message !== undefined) {
+            if (message !== undefined && message !== false && message !== '') {
                 $.proxy(pub.confirm, this)(message, function () {
                     pub.handleAction($this, event);
                 });
@@ -480,7 +503,8 @@ window.yii = (function ($) {
             .on('change.yii', pub.changeableSelector, handler);
     }
 
-    function isReloadableAsset(url) {
+    function isReloadableAsset(url)
+    {
         for (var i = 0; i < pub.reloadableScripts.length; i++) {
             var rule = getAbsoluteUrl(pub.reloadableScripts[i]);
             var match = new RegExp("^" + escapeRegExp(rule).split('\\*').join('.+') + "$").test(url);
@@ -492,8 +516,9 @@ window.yii = (function ($) {
         return false;
     }
 
-    // http://stackoverflow.com/questions/3446170/escape-string-for-use-in-javascript-regex
-    function escapeRegExp(str) {
+    // https://stackoverflow.com/questions/3446170/escape-string-for-use-in-javascript-regex/6969486#6969486
+    function escapeRegExp(str)
+    {
         return str.replace(/[\-\[\]\/\{\}\(\)\*\+\?\.\\\^\$\|]/g, "\\$&");
     }
 
@@ -502,7 +527,8 @@ window.yii = (function ($) {
      * @param {string} url Initial URL
      * @returns {string}
      */
-    function getAbsoluteUrl(url) {
+    function getAbsoluteUrl(url)
+    {
         return url.charAt(0) === '/' ? pub.getBaseCurrentUrl() + url : url;
     }
 

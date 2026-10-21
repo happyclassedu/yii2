@@ -1,17 +1,19 @@
 <?php
+
 /**
- * @link http://www.yiiframework.com/
+ * @link https://www.yiiframework.com/
  * @copyright Copyright (c) 2008 Yii Software LLC
- * @license http://www.yiiframework.com/license/
+ * @license https://www.yiiframework.com/license/
  */
 
 namespace yii\console;
 
 use Yii;
 use yii\base\InvalidRouteException;
+use yii\base\Module;
 
 // define STDIN, STDOUT and STDERR if the PHP SAPI did not define them (e.g. creating console application in web env)
-// http://php.net/manual/en/features.commandline.io-streams.php
+// https://www.php.net/manual/en/features.commandline.io-streams.php
 defined('STDIN') or define('STDIN', fopen('php://stdin', 'r'));
 defined('STDOUT') or define('STDOUT', fopen('php://stdout', 'w'));
 defined('STDERR') or define('STDERR', fopen('php://stderr', 'w'));
@@ -50,9 +52,9 @@ defined('STDERR') or define('STDERR', fopen('php://stderr', 'w'));
  * yii help
  * ```
  *
- * @property ErrorHandler $errorHandler The error handler application component. This property is read-only.
- * @property Request $request The request component. This property is read-only.
- * @property Response $response The response component. This property is read-only.
+ * @property-read ErrorHandler $errorHandler The error handler application component.
+ * @property-read Request $request The request component.
+ * @property-read Response $response The response component.
  *
  * @author Qiang Xue <qiang.xue@gmail.com>
  * @since 2.0
@@ -62,8 +64,7 @@ class Application extends \yii\base\Application
     /**
      * The option name for specifying the application configuration file path.
      */
-    const OPTION_APPCONFIG = 'appconfig';
-
+    public const OPTION_APPCONFIG = 'appconfig';
     /**
      * @var string the default route of this application. Defaults to 'help',
      * meaning the `help` command.
@@ -75,13 +76,13 @@ class Application extends \yii\base\Application
      */
     public $enableCoreCommands = true;
     /**
-     * @var Controller the currently active controller instance
+     * @var Controller|null the currently active controller instance
      */
     public $controller;
 
 
     /**
-     * @inheritdoc
+     * {@inheritdoc}
      */
     public function __construct($config = [])
     {
@@ -105,10 +106,10 @@ class Application extends \yii\base\Application
                 if (strpos($param, $option) !== false) {
                     $path = substr($param, strlen($option));
                     if (!empty($path) && is_file($file = Yii::getAlias($path))) {
-                        return require($file);
-                    } else {
-                        exit("The configuration file does not exist: $path\n");
+                        return require $file;
                     }
+
+                    exit("The configuration file does not exist: $path\n");
                 }
             }
         }
@@ -142,17 +143,17 @@ class Application extends \yii\base\Application
      */
     public function handleRequest($request)
     {
-        list ($route, $params) = $request->resolve();
+        list($route, $params) = $request->resolve();
         $this->requestedRoute = $route;
         $result = $this->runAction($route, $params);
         if ($result instanceof Response) {
             return $result;
-        } else {
-            $response = $this->getResponse();
-            $response->exitStatus = $result;
-
-            return $response;
         }
+
+        $response = $this->getResponse();
+        $response->exitStatus = $result;
+
+        return $response;
     }
 
     /**
@@ -164,21 +165,21 @@ class Application extends \yii\base\Application
      * For example, to run `public function actionTest($a, $b)` assuming that the controller has options the following
      * code should be used:
      *
-     * ```php
+     * ```
      * \Yii::$app->runAction('controller/test', ['option' => 'value', $a, $b]);
      * ```
      *
      * @param string $route the route that specifies the action.
      * @param array $params the parameters to be passed to the action
-     * @return int|Response the result of the action. This can be either an exit code or Response object.
-     * Exit code 0 means normal, and other values mean abnormal. Exit code of `null` is treaded as `0` as well.
+     * @return int|Response|null the result of the action. This can be either an exit code or Response object.
+     * Exit code 0 means normal, and other values mean abnormal. Exit code of `null` is treated as `0` as well.
      * @throws Exception if the route is invalid
      */
     public function runAction($route, $params = [])
     {
         try {
             $res = parent::runAction($route, $params);
-            return is_object($res) ? $res : (int)$res;
+            return is_object($res) ? $res : (int) $res;
         } catch (InvalidRouteException $e) {
             throw new UnknownCommandException($route, $this, 0, $e);
         }
@@ -229,7 +230,7 @@ class Application extends \yii\base\Application
     }
 
     /**
-     * @inheritdoc
+     * {@inheritdoc}
      */
     public function coreComponents()
     {

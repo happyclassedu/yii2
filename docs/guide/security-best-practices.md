@@ -2,6 +2,9 @@ Security best practices
 =======================
 
 Below we'll review common security principles and describe how to avoid threats when developing applications using Yii.
+Most of these principles are not unique to Yii alone but apply to website or software development in general,
+so you will also find links for further reading on the general ideas behind these.
+
 
 Basic principles
 ----------------
@@ -28,6 +31,11 @@ if (!in_array($sortBy, ['title', 'created_at', 'status'])) {
 
 In Yii, most probably you'll use [form validation](input-validation.md) to do alike checks.
 
+Further reading on the topic:
+
+- <https://owasp.org/www-community/vulnerabilities/Improper_Data_Validation>
+- <https://www.owasp.org/index.php/Input_Validation_Cheat_Sheet>
+
 
 ### Escape output
 
@@ -35,6 +43,13 @@ Escape output means that depending on context where we're using data it should b
 should escape `<`, `>` and alike special characters. In context of JavaScript or SQL it will be different set of characters.
 Since it's error-prone to escape everything manually Yii provides various tools to perform escaping for different
 contexts.
+
+Further reading on the topic:
+
+- <https://owasp.org/www-community/attacks/Command_Injection>
+- <https://owasp.org/www-community/attacks/Code_Injection>
+- <https://owasp.org/www-community/attacks/xss/>
+
 
 Avoiding SQL injections
 -----------------------
@@ -56,7 +71,7 @@ SELECT * FROM user WHERE username = ''; DROP TABLE user; --'
 This is valid query that will search for users with empty username and then will drop `user` table most probably
 resulting in broken website and data loss (you've set up regular backups, right?).
 
-In Yii most of database querying happens via [Active Record](db-active-record.md) which properly uses PDO prepared
+In Yii most database querying happens via [Active Record](db-active-record.md) which properly uses PDO prepared
 statements internally. In case of prepared statements it's not possible to manipulate query as was demonstrated above.
 
 Still, sometimes you need [raw queries](db-dao.md) or [query builder](db-query-builder.md). In this case you should use
@@ -100,6 +115,10 @@ $rowCount = $connection->createCommand($sql)->queryScalar();
 
 You can get details about the syntax in [Quoting Table and Column Names](db-dao.md#quoting-table-and-column-names).
 
+Further reading on the topic:
+
+- <https://owasp.org/www-community/attacks/SQL_Injection>
+
 
 Avoiding XSS
 ------------
@@ -130,22 +149,37 @@ If it should be HTML we could get some help from HtmlPurifier:
 
 Note that HtmlPurifier processing is quite heavy so consider adding caching.
 
+Further reading on the topic:
+
+- <https://owasp.org/www-community/attacks/xss/>
+
+
 Avoiding CSRF
 -------------
 
 CSRF is an abbreviation for cross-site request forgery. The idea is that many applications assume that requests coming
-from a user browser are made by the user himself. It could be `false`.
+from a user browser are made by the user themselves. This assumption could be false.
 
-For example, `an.example.com` website has `/logout` URL that, when accessed using a simple GET, logs user out. As long
-as it's requested by the user itself everything is OK but one day bad guys are somehow posting
-`<img src="http://an.example.com/logout">` on a forum user visits frequently. Browser doesn't make any difference between
-requesting an image or requesting a page so when user opens a page with such `img` tag, the browser will send the GET request to that URL, and the user will be logged out from `an.example.com`. 
+For example, the website `an.example.com` has a `/logout` URL that, when accessed using a simple GET request, logs the user out. As long
+as it's requested by the user themselves everything is OK, but one day bad guys are somehow posting
+`<img src="https://an.example.com/logout">` on a forum the user visits frequently. The browser doesn't make any difference between
+requesting an image or requesting a page so when the user opens a page with such a manipulated `<img>` tag,
+the browser will send the GET request to that URL and the user will be logged out from `an.example.com`.
 
-That's the basic idea. One can say that logging user out is nothing serious, but bad guys can do much more, using this idea. Imagine that some website has an URL `http://an.example.com/purse/transfer?to=anotherUser&amount=2000`. Accessing it using GET request, causes transfer of $2000 from authorized user account to user `anotherUser`. We know, that browser will always send GET request to load an image, so we can modify code to accept only POST requests on that URL. Unfortunately, this will not save us, because an attacker can put some JavaScript code instead of `<img>` tag, which allows to send POST requests on that URL.
+That's the basic idea of how a CSRF attack works. One can say that logging out a user is not a serious thing,
+however this was just an example, there are much more things one could do using this approach, for example triggering payments
+or changing data. Imagine that some website has an URL
+`https://an.example.com/purse/transfer?to=anotherUser&amount=2000`. Accessing it using GET request, causes transfer of $2000
+from authorized user account to user `anotherUser`. We know, that the browser will always send GET request to load an image,
+so we can modify code to accept only POST requests on that URL. Unfortunately, this will not save us, because an attacker
+can put some JavaScript code instead of `<img>` tag, which allows to send POST requests to that URL as well.
+
+For this reason, Yii applies additional mechanisms to protect against CSRF attacks.
 
 In order to avoid CSRF you should always:
 
 1. Follow HTTP specification i.e. GET should not change application state.
+   See [RFC2616](https://www.rfc-editor.org/rfc/rfc9110.html#name-method-definitions) for more details.
 2. Keep Yii CSRF protection enabled.
 
 Sometimes you need to disable CSRF validation per controller and/or action. It could be achieved by setting its property:
@@ -185,6 +219,76 @@ class SiteController extends Controller
 }
 ```
 
+Disabling CSRF validation in [standalone actions](structure-controllers.md#standalone-actions) must be done in `init()`
+method. Do not place this code into `beforeRun()` method because it won't have effect.
+
+```php
+<?php
+
+namespace app\components;
+
+use yii\base\Action;
+
+class ContactAction extends Action
+{
+    public function init()
+    {
+        parent::init();
+        $this->controller->enableCsrfValidation = false;
+    }
+
+    public function run()
+    {
+          $model = new ContactForm();
+          $request = Yii::$app->request;
+          if ($request->referrer === 'yiipowered.com'
+              && $model->load($request->post())
+              && $model->validate()
+          ) {
+              $model->sendEmail();
+          }
+    }
+}
+```
+
+> Warning: Disabling CSRF will allow any site to send POST requests to your site. It is important to implement extra validation such as checking an IP address or a secret token in this case.
+
+> Note: Since version 2.0.21 Yii supports the `sameSite` cookie setting (requires PHP version 7.3.0 or higher).
+  Setting the `sameSite` cookie setting does not make the above obsolete since not all browsers support the setting yet.
+  See the [Sessions and Cookies sameSite option](runtime-sessions-cookies.md#samesite) for more information.
+
+Further reading on the topic:
+
+- <https://owasp.org/www-community/attacks/csrf>
+- <https://owasp.org/www-community/SameSite>
+
+
+Avoiding arbitrary object instantiations
+----------------------------------------
+
+Yii [configurations](concept-configurations.md) are associative arrays used by the framework to instantiate new objects through `Yii::createObject($config)`. These arrays specify the class name for instantiation, and it is important to ensure that this class name does not originate from untrusted sources. Otherwise, it can lead to Unsafe Reflection, a vulnerability that allows the execution of malicious code by exploiting the loading of specific classes. Additionally, when you need to dynamically add keys to an object derived from a framework class, such as the base `Component` class, it's essential to validate these dynamic properties using a whitelist approach. This precaution is necessary because the framework might employ `Yii::createObject($config)` within the `__set()` magic method.
+
+
+Avoiding unsafe deserialization
+-------------------------------
+
+Never pass untrusted or user-controlled data to PHP's `unserialize()`. Deserializing attacker-controlled bytes can
+instantiate arbitrary objects and trigger Property-Oriented Programming (POP) gadget chains, potentially leading to
+remote code execution. Parse untrusted input with a safe format such as JSON ([[yii\helpers\Json::decode()]]) instead.
+
+Yii relies on PHP's native `serialize()`/`unserialize()` for data it writes into *trusted* stores. The
+[cache](caching-overview.md) backend uses native serialization by default, configurable through
+[[yii\caching\Cache::$serializer]] (a custom serializer pair, or `false` to disable it, as in [[yii\caching\ArrayCache]]);
+the same applies to cache [dependencies](caching-data.md#cache-dependencies). RBAC storage always uses native
+`serialize()`/`unserialize()`: [[yii\rbac\DbManager]] persists to the `auth_item.data` and `auth_rule.data` columns,
+while [[yii\rbac\PhpManager]] writes to its rule files. These reads are safe only while those stores stay trusted. Make sure your
+cache backend (Redis, Memcached, files, database) and your RBAC tables and files are writable only by the application;
+an attacker who can write into them can stage a deserialization gadget. Cookies received over HTTP are not trusted: Yii
+verifies their integrity with an HMAC ([[yii\web\Request::$cookieValidationKey|cookieValidationKey]]) and deserializes
+them with `allowed_classes => false`, so no application or gadget class is instantiated: any serialized object becomes an
+inert `__PHP_Incomplete_Class` (its `__wakeup()`/`__destruct()` never run), and the cookie is ignored unless it
+deserializes to the expected `[name, value]` array.
+
 
 Avoiding file exposure
 ----------------------
@@ -195,32 +299,44 @@ environments it could be impossible to achieve so we'll end up with all the code
 If it's the case don't forget to deny access to everything except `web`. If it can't be done consider hosting your
 application elsewhere.
 
-Avoiding debug info and tools at production
+
+Avoiding debug info and tools in production
 -------------------------------------------
 
 In debug mode Yii shows quite verbose errors which are certainly helpful for development. The thing is that these
 verbose errors are handy for attacker as well since these could reveal database structure, configuration values and
 parts of your code. Never run production applications with `YII_DEBUG` set to `true` in your `index.php`.
 
-You should never enable Gii at production. It could be used to get information about database structure, code and to
+You should never enable Gii or the Debug toolbar in production. It could be used to get information about database structure, code and to
 simply rewrite code with what's generated by Gii.
 
 Debug toolbar should be avoided at production unless really necessary. It exposes all the application and config
 details possible. If you absolutely need it check twice that access is properly restricted to your IP only.
 
+Further reading on the topic:
+
+- <https://owasp.org/www-project-.net/articles/Exception_Handling.md>
+- <https://owasp.org/www-pdf-archive/OWASP_Top_10_2007.pdf> (A6 - Information Leakage and Improper Error Handling)
+
+
 Using secure connection over TLS
 --------------------------------
 
 Yii provides features that rely on cookies and/or PHP sessions. These can be vulnerable in case your connection is
-compromised. The risk is reduced if the app uses secure connection via TLS.
+compromised. The risk is reduced if the app uses secure connection via TLS (often referred to as [SSL](https://en.wikipedia.org/wiki/Transport_Layer_Security)).
 
 Please refer to your webserver documentation for instructions on how to configure it. You may also check example configs
-provided by H5BP project:
+provided by the H5BP project:
 
 - [Nginx](https://github.com/h5bp/server-configs-nginx)
 - [Apache](https://github.com/h5bp/server-configs-apache).
 - [IIS](https://github.com/h5bp/server-configs-iis).
 - [Lighttpd](https://github.com/h5bp/server-configs-lighttpd).
+
+> Note: When TLS is configured it is recommended that (session) cookies are sent over TLS exclusively.
+  This is achieved by setting the `secure` flag for sessions and/or cookies.
+  See the [Sessions and Cookies secure flag](runtime-sessions-cookies.md#secure) for more information.
+
 
 Secure Server configuration
 ---------------------------
@@ -241,7 +357,7 @@ or explicitly set or filter the value by setting the [[yii\web\Request::setHostI
 
 For more information about the server configuration, please refer to the documentation of your webserver:
 
-- Apache 2: <http://httpd.apache.org/docs/trunk/vhosts/examples.html#defaultallports>
+- Apache 2: <https://httpd.apache.org/docs/trunk/vhosts/examples.html#defaultallports>
 - Nginx: <https://www.nginx.com/resources/wiki/start/topics/examples/server_blocks/>
 
 If you don't have access to the server configuration, you can setup [[yii\filters\HostControl]] filter at
@@ -264,3 +380,29 @@ return [
 
 > Note: you should always prefer web server configuration for 'host header attack' protection instead of the filter usage.
   [[yii\filters\HostControl]] should be used only if server configuration setup is unavailable.
+
+### Configuring SSL peer validation
+
+There is a typical misconception about how to solve SSL certificate validation issues such as:
+
+```
+cURL error 60: SSL certificate problem: unable to get local issuer certificate
+```
+
+or
+
+```
+stream_socket_enable_crypto(): SSL operation failed with code 1. OpenSSL Error messages: error:1416F086:SSL routines:tls_process_server_certificate:certificate verify failed
+```
+
+Many sources wrongly suggest disabling SSL peer verification. That should not be ever done since it enables
+man-in-the middle type of attacks. Instead, PHP should be configured properly:
+
+1. Download [https://curl.haxx.se/ca/cacert.pem](https://curl.haxx.se/ca/cacert.pem).
+2. Add the following to your php.ini:
+  ```
+  openssl.cafile="/path/to/cacert.pem"
+  curl.cainfo="/path/to/cacert.pem".
+  ```
+
+Note that the `cacert.pem` file should be kept up to date.

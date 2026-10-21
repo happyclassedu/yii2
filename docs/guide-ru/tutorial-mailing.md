@@ -1,7 +1,7 @@
 Отправка почты
 =======
 
-> Note: Этот раздел находиться в стадии разработки.
+> Note: Этот раздел находится в стадии разработки.
 
 Yii позволяет оформлять и посылать E-mail сообщения. Однако, ядро фреимворка предоставляет только
 функциональность оформления и основной интерфейс. Фактический механизм отправки почты должен быть предоставлен с помощью расширения, потому что различным проектам могут потребоваться различные реализации и обычно они зависят от внешних сервисов и бибилотек.
@@ -90,8 +90,10 @@ use yii\helpers\Html;
 use yii\helpers\Url;
 
 
-/* @var $this \yii\web\View view component instance */
-/* @var $message \yii\mail\BaseMessage instance of newly created mail message */
+/**
+ * @var \yii\web\View $this view component instance
+ * @var \yii\mail\BaseMessage $message instance of newly created mail message
+ */
 
 ?>
 <h2>This message allows you to visit our site home page by one click</h2>
@@ -136,9 +138,11 @@ Yii::$app->mailer->compose([
 <?php
 use yii\helpers\Html;
 
-/* @var $this \yii\web\View view component instance */
-/* @var $message \yii\mail\MessageInterface the message being composed */
-/* @var $content string main view render result */
+/**
+ * @var \yii\web\View $this view component instance
+ * @var \yii\mail\MessageInterface $message the message being composed
+ * @var string $content main view render result
+ */
 ?>
 <?php $this->beginPage() ?>
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
@@ -218,5 +222,5 @@ Yii::$app->mailer->compose('embed-email', ['imageFileName' => '/path/to/image.jp
 -------------------------------
 
 Для того, чтобы создать свое собственное решение, вам надо будет создать два класса: одно для 'Mailer' и другое для 'Message'.
-Вы можете использовать `yii\mail\BaseMailer` и `yii\mail\BaseMessage` как базовые классы для вашего решения. Эти классы уже содержат базовую логику, которая описана в этом руководстве. Однако, их испольщование не обязательно, достаточно унаследоваться от `yii\mail\MailerInterface` и `yii\mail\MessageInterface` интерфейсов.
+Вы можете использовать `yii\mail\BaseMailer` и `yii\mail\BaseMessage` как базовые классы для вашего решения. Эти классы уже содержат базовую логику, которая описана в этом руководстве. Однако, их использование не обязательно, достаточно унаследоваться от `yii\mail\MailerInterface` и `yii\mail\MessageInterface` интерфейсов.
 Затем вам необходимо обеспечить выполнение всех абстрактных методов этих интерфейсов для построения вашего решения.

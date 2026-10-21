@@ -1,11 +1,18 @@
 <?php
 
+/**
+ * @link https://www.yiiframework.com/
+ * @copyright Copyright (c) 2008 Yii Software LLC
+ * @license https://www.yiiframework.com/license/
+ */
+
 namespace yiiunit\framework\caching;
 
+use yii\db\Connection;
 use yii\caching\DbCache;
 
 /**
- * Class for testing file cache backend
+ * Class for testing file cache backend.
  * @group db
  * @group caching
  */
@@ -14,7 +21,7 @@ class DbCacheTest extends CacheTestCase
     private $_cacheInstance;
     private $_connection;
 
-    protected function setUp()
+    protected function setUp(): void
     {
         if (!extension_loaded('pdo') || !extension_loaded('pdo_mysql')) {
             $this->markTestSkipped('pdo and pdo_mysql extensions are required.');
@@ -22,7 +29,7 @@ class DbCacheTest extends CacheTestCase
 
         parent::setUp();
 
-        $this->getConnection()->createCommand("
+        $this->getConnection()->createCommand('
             CREATE TABLE IF NOT EXISTS cache (
                 id char(128) NOT NULL,
                 expire int(11) DEFAULT NULL,
@@ -30,19 +37,19 @@ class DbCacheTest extends CacheTestCase
                 PRIMARY KEY (id),
                 KEY expire (expire)
             );
-        ")->execute();
+        ')->execute();
     }
 
     /**
      * @param  bool            $reset whether to clean up the test database
-     * @return \yii\db\Connection
+     * @return Connection
      */
     public function getConnection($reset = true)
     {
         if ($this->_connection === null) {
             $databases = self::getParam('databases');
             $params = $databases['mysql'];
-            $db = new \yii\db\Connection;
+            $db = new Connection();
             $db->dsn = $params['dsn'];
             $db->username = $params['username'];
             $db->password = $params['password'];
@@ -73,7 +80,7 @@ class DbCacheTest extends CacheTestCase
         return $this->_cacheInstance;
     }
 
-    public function testExpire()
+    public function testExpire(): void
     {
         $cache = $this->getCacheInstance();
 
@@ -85,7 +92,7 @@ class DbCacheTest extends CacheTestCase
         $this->assertFalse($cache->get('expire_test'));
     }
 
-    public function testExpireAdd()
+    public function testExpireAdd(): void
     {
         $cache = $this->getCacheInstance();
 
@@ -95,5 +102,19 @@ class DbCacheTest extends CacheTestCase
         $this->assertEquals('expire_testa', $cache->get('expire_testa'));
         static::$time++;
         $this->assertFalse($cache->get('expire_testa'));
+    }
+
+    public function testSynchronousSetWithTheSameKey(): void
+    {
+        $KEY = 'sync-test-key';
+        $VALUE = 'sync-test-value';
+
+        $cache = $this->getCacheInstance();
+        static::$time = \time();
+
+        $this->assertTrue($cache->set($KEY, $VALUE, 60));
+        $this->assertTrue($cache->set($KEY, $VALUE, 60));
+
+        $this->assertEquals($VALUE, $cache->get($KEY));
     }
 }

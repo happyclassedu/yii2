@@ -1,22 +1,35 @@
 <?php
 
+/**
+ * @link https://www.yiiframework.com/
+ * @copyright Copyright (c) 2008 Yii Software LLC
+ * @license https://www.yiiframework.com/license/
+ */
+
 namespace yiiunit\framework\widgets;
 
-use Yii;
+use yiiunit\TestCase;
 use yii\widgets\Menu;
 
 /**
  * @group widgets
  */
-class MenuTest extends \yiiunit\TestCase
+class MenuTest extends TestCase
 {
-    protected function setUp()
+    protected function setUp(): void
     {
         parent::setUp();
-        $this->mockApplication();
+        $this->mockWebApplication([
+            'components' => [
+                'urlManager' => [
+                    'enablePrettyUrl' => true,
+                    'showScriptName' => false,
+                ],
+            ],
+        ]);
     }
 
-    public function testEncodeLabel()
+    public function testEncodeLabel(): void
     {
         $output = Menu::widget([
             'route' => 'test/test',
@@ -25,18 +38,18 @@ class MenuTest extends \yiiunit\TestCase
             'items' => [
                 [
                     'encode' => false,
-                    'label'  => '<span class="glyphicon glyphicon-user"></span> Users',
-                    'url'    => '#',
+                    'label' => '<span class="glyphicon glyphicon-user"></span> Users',
+                    'url' => '#',
                 ],
                 [
                     'encode' => true,
-                    'label'  => 'Authors & Publications',
-                    'url'    => '#',
+                    'label' => 'Authors & Publications',
+                    'url' => '#',
                 ],
-            ]
+            ],
         ]);
 
-        $expected = <<<HTML
+        $expected = <<<'HTML'
 <ul><li><a href="#"><span class="glyphicon glyphicon-user"></span> Users</a></li>
 <li><a href="#">Authors &amp; Publications</a></li></ul>
 HTML;
@@ -49,18 +62,18 @@ HTML;
             'items' => [
                 [
                     'encode' => false,
-                    'label'  => '<span class="glyphicon glyphicon-user"></span> Users',
-                    'url'    => '#',
+                    'label' => '<span class="glyphicon glyphicon-user"></span> Users',
+                    'url' => '#',
                 ],
                 [
                     'encode' => true,
-                    'label'  => 'Authors & Publications',
-                    'url'    => '#',
+                    'label' => 'Authors & Publications',
+                    'url' => '#',
                 ],
-            ]
+            ],
         ]);
 
-        $expected = <<<HTML
+        $expected = <<<'HTML'
 <ul><li><a href="#"><span class="glyphicon glyphicon-user"></span> Users</a></li>
 <li><a href="#">Authors &amp; Publications</a></li></ul>
 HTML;
@@ -70,7 +83,7 @@ HTML;
     /**
      * @see https://github.com/yiisoft/yii2/issues/8064
      */
-    public function testTagOption()
+    public function testTagOption(): void
     {
         $output = Menu::widget([
             'route' => 'test/test',
@@ -81,19 +94,19 @@ HTML;
             ],
             'items' => [
                 [
-                    'label'  => 'item1',
-                    'url'    => '#',
+                    'label' => 'item1',
+                    'url' => '#',
                     'options' => ['tag' => 'div'],
                 ],
                 [
-                    'label'  => 'item2',
-                    'url'    => '#',
+                    'label' => 'item2',
+                    'url' => '#',
                     'options' => ['tag' => false],
                 ],
-            ]
+            ],
         ]);
 
-        $expected = <<<HTML
+        $expected = <<<'HTML'
 <div><a href="#">item1</a></div>
 <a href="#">item2</a>
 HTML;
@@ -108,18 +121,18 @@ HTML;
             ],
             'items' => [
                 [
-                    'label'  => 'item1',
-                    'url'    => '#',
+                    'label' => 'item1',
+                    'url' => '#',
                 ],
                 [
-                    'label'  => 'item2',
-                    'url'    => '#',
+                    'label' => 'item2',
+                    'url' => '#',
                 ],
             ],
-            'itemOptions' => ['tag' => false]
+            'itemOptions' => ['tag' => false],
         ]);
 
-        $expected = <<<HTML
+        $expected = <<<'HTML'
 <a href="#">item1</a>
 <a href="#">item2</a>
 HTML;
@@ -127,7 +140,7 @@ HTML;
         $this->assertEqualsWithoutLE($expected, $output);
     }
 
-    public function testItemTemplate()
+    public function testItemTemplate(): void
     {
         $output = Menu::widget([
             'route' => 'test/test',
@@ -136,21 +149,21 @@ HTML;
             'labelTemplate' => '',
             'items' => [
                 [
-                    'label'  => 'item1',
-                    'url'    => '#',
-                    'template' => 'label: {label}; url: {url}'
+                    'label' => 'item1',
+                    'url' => '#',
+                    'template' => 'label: {label}; url: {url}',
                 ],
                 [
-                    'label'  => 'item2',
-                    'template' => 'label: {label}'
+                    'label' => 'item2',
+                    'template' => 'label: {label}',
                 ],
                 [
-                    'label'  => 'item3 (no template)',
+                    'label' => 'item3 (no template)',
                 ],
-            ]
+            ],
         ]);
 
-        $expected = <<<HTML
+        $expected = <<<'HTML'
 <ul><li>label: item1; url: #</li>
 <li>label: item2</li>
 <li></li></ul>
@@ -159,7 +172,7 @@ HTML;
         $this->assertEqualsWithoutLE($expected, $output);
     }
 
-    public function testActiveItemClosure()
+    public function testActiveItemClosure(): void
     {
         $output = Menu::widget([
             'route' => 'test/test',
@@ -168,26 +181,26 @@ HTML;
             'labelTemplate' => '',
             'items' => [
                 [
-                    'label'  => 'item1',
-                    'url'    => '#',
+                    'label' => 'item1',
+                    'url' => '#',
                     'template' => 'label: {label}; url: {url}',
                     'active' => function ($item, $hasActiveChild, $isItemActive, $widget) {
                         return isset($item, $hasActiveChild, $isItemActive, $widget);
-                    }
+                    },
                 ],
                 [
-                    'label'  => 'item2',
+                    'label' => 'item2',
                     'template' => 'label: {label}',
-                    'active' => false
+                    'active' => false,
                 ],
                 [
-                    'label'  => 'item3 (no template)',
-                    'active' => 'somestring'
+                    'label' => 'item3 (no template)',
+                    'active' => 'somestring',
                 ],
-            ]
+            ],
         ]);
 
-        $expected = <<<HTML
+        $expected = <<<'HTML'
 <ul><li class="active">label: item1; url: #</li>
 <li>label: item2</li>
 <li class="active"></li></ul>
@@ -196,8 +209,275 @@ HTML;
         $this->assertEqualsWithoutLE($expected, $output);
     }
 
-    public function testIsItemActive()
+    public function testActiveItemClosureWithLogic(): void
     {
-        // TODO: implement test of protected method isItemActive()
+        $output = Menu::widget([
+            'route' => 'test/logic',
+            'params' => [],
+            'linkTemplate' => '',
+            'labelTemplate' => '',
+            'items' => [
+                [
+                    'label' => 'logic item',
+                    'url' => 'test/logic',
+                    'template' => 'label: {label}; url: {url}',
+                    'active' => function ($item, $hasActiveChild, $isItemActive, $widget) {
+                        return $widget->route === 'test/logic';
+                    },
+                ],
+                [
+                    'label' => 'another item',
+                    'url' => 'test/another',
+                    'template' => 'label: {label}; url: {url}',
+                ]
+            ],
+        ]);
+
+        $expected = <<<'HTML'
+<ul><li class="active">label: logic item; url: test/logic</li>
+<li>label: another item; url: test/another</li></ul>
+HTML;
+
+        $this->assertEqualsWithoutLE($expected, $output);
+    }
+
+    public function testActiveItemClosureWithLogicParent(): void
+    {
+        $output = Menu::widget([
+            'route' => 'test/logic',
+            'params' => [],
+            'linkTemplate' => '',
+            'labelTemplate' => '',
+            'activateParents' => true,
+            'items' => [
+                [
+                    'label' => 'Home',
+                    'url' => 'test/home',
+                    'template' => 'label: {label}; url: {url}',
+                ],
+                [
+                    'label' => 'About',
+                    'url' => 'test/about',
+                    'template' => 'label: {label}; url: {url}',
+                ],
+                [
+                    'label' => 'Parent',
+                    'items' => [
+                        [
+                            'label' => 'logic item',
+                            'url' => 'test/logic',
+                            'template' => 'label: {label}; url: {url}',
+                            'active' => function ($item, $hasActiveChild, $isItemActive, $widget) {
+                                return $widget->route === 'test/logic';
+                            },
+                        ],
+                        [
+                            'label' => 'another item',
+                            'url' => 'test/another',
+                            'template' => 'label: {label}; url: {url}',
+                        ]
+                    ],
+                ],
+            ],
+        ]);
+
+        $expected = <<<'HTML'
+<ul><li>label: Home; url: test/home</li>
+<li>label: About; url: test/about</li>
+<li class="active">
+<ul>
+<li class="active">label: logic item; url: test/logic</li>
+<li>label: another item; url: test/another</li>
+</ul>
+</li></ul>
+HTML;
+
+        $this->assertEqualsWithoutLE($expected, $output);
+    }
+
+    public function testActiveItemClosureParentAnotherItem(): void
+    {
+        /** @see https://github.com/yiisoft/yii2/issues/19060 */
+        $output = Menu::widget([
+            'route' => 'test/another',
+            'params' => [],
+            'linkTemplate' => '',
+            'labelTemplate' => '',
+            'activateParents' => true,
+            'items' => [
+                [
+                    'label' => 'Home',
+                    'url' => 'test/home',
+                    'template' => 'label: {label}; url: {url}',
+                ],
+                [
+                    'label' => 'About',
+                    'url' => 'test/about',
+                    'template' => 'label: {label}; url: {url}',
+                ],
+                [
+                    'label' => 'Parent',
+                    'items' => [
+                        [
+                            'label' => 'another item',
+                            // use non relative route to avoid error in BaseUrl::normalizeRoute (missing controller)
+                            'url' => ['/test/another'],
+                            'template' => 'label: {label}; url: {url}',
+                        ],
+                        [
+                            'label' => 'logic item',
+                            'url' => 'test/logic',
+                            'template' => 'label: {label}; url: {url}',
+                            'active' => function ($item, $hasActiveChild, $isItemActive, $widget) {
+                                return $widget->route === 'test/logic';
+                            },
+                        ],
+
+                    ],
+                ],
+            ],
+        ]);
+
+        $expected = <<<'HTML'
+<ul><li>label: Home; url: test/home</li>
+<li>label: About; url: test/about</li>
+<li class="active">
+<ul>
+<li class="active">label: another item; url: /test/another</li>
+<li>label: logic item; url: test/logic</li>
+</ul>
+</li></ul>
+HTML;
+
+        $this->assertEqualsWithoutLE($expected, $output);
+    }
+
+    public function testItemClassAsArray(): void
+    {
+        $output = Menu::widget([
+            'route' => 'test/test',
+            'params' => [],
+            'encodeLabels' => true,
+            'activeCssClass' => 'item-active',
+            'items' => [
+                [
+                    'label' => 'item1',
+                    'url' => '#',
+                    'active' => true,
+                    'options' => [
+                        'class' => [
+                            'someclass',
+                        ],
+                    ],
+                ],
+                [
+                    'label' => 'item2',
+                    'url' => '#',
+                    'options' => [
+                        'class' => [
+                            'another-class',
+                            'other--class',
+                            'two classes',
+                        ],
+                    ],
+                ],
+                [
+                    'label' => 'item3',
+                    'url' => '#',
+                ],
+                [
+                    'label' => 'item4',
+                    'url' => '#',
+                    'options' => [
+                        'class' => [
+                            'some-other-class',
+                            'foo_bar_baz_class',
+                        ],
+                    ],
+                ],
+            ],
+        ]);
+
+        $expected = <<<'HTML'
+<ul><li class="someclass item-active"><a href="#">item1</a></li>
+<li class="another-class other--class two classes"><a href="#">item2</a></li>
+<li><a href="#">item3</a></li>
+<li class="some-other-class foo_bar_baz_class"><a href="#">item4</a></li></ul>
+HTML;
+        $this->assertEqualsWithoutLE($expected, $output);
+    }
+
+    public function testItemClassAsString(): void
+    {
+        $output = Menu::widget([
+            'route' => 'test/test',
+            'params' => [],
+            'encodeLabels' => true,
+            'activeCssClass' => 'item-active',
+            'items' => [
+                [
+                    'label' => 'item1',
+                    'url' => '#',
+                    'options' => [
+                        'class' => 'someclass',
+                    ],
+                ],
+                [
+                    'label' => 'item2',
+                    'url' => '#',
+                ],
+                [
+                    'label' => 'item3',
+                    'url' => '#',
+                    'options' => [
+                        'class' => 'some classes',
+                    ],
+                ],
+                [
+                    'label' => 'item4',
+                    'url' => '#',
+                    'active' => true,
+                    'options' => [
+                        'class' => 'another-class other--class two classes',
+                    ],
+                ],
+            ],
+        ]);
+
+        $expected = <<<'HTML'
+<ul><li class="someclass"><a href="#">item1</a></li>
+<li><a href="#">item2</a></li>
+<li class="some classes"><a href="#">item3</a></li>
+<li class="another-class other--class two classes item-active"><a href="#">item4</a></li></ul>
+HTML;
+        $this->assertEqualsWithoutLE($expected, $output);
+    }
+
+    public function testIsItemActive(): void
+    {
+        $output = Menu::widget([
+            'route' => 'test/item2',
+            'params' => [
+                'page' => '5',
+            ],
+            'items' => [
+                [
+                    'label' => 'item1',
+                    'url' => ['/test/item1']
+                ],
+                [
+                    'label' => 'item2',
+                    // use non relative route to avoid error in BaseUrl::normalizeRoute (missing controller)
+                    'url' => ['/test/item2','page' => '5']
+                ],
+
+            ],
+        ]);
+
+        $expected = <<<'HTML'
+<ul><li><a href="/test/item1">item1</a></li>
+<li class="active"><a href="/test/item2?page=5">item2</a></li></ul>
+HTML;
+        $this->assertEqualsWithoutLE($expected, $output);
     }
 }

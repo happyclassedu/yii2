@@ -1,6 +1,12 @@
 <?php
-namespace yiiunit\framework\console\controllers;
 
+/**
+ * @link https://www.yiiframework.com/
+ * @copyright Copyright (c) 2008 Yii Software LLC
+ * @license https://www.yiiframework.com/license/
+ */
+
+namespace yiiunit\framework\console\controllers;
 
 use Yii;
 use yii\helpers\FileHelper;
@@ -14,7 +20,7 @@ class POMessageControllerTest extends BaseMessageControllerTest
     protected $messagePath;
     protected $catalog = 'messages';
 
-    public function setUp()
+    protected function setUp(): void
     {
         parent::setUp();
 
@@ -22,14 +28,14 @@ class POMessageControllerTest extends BaseMessageControllerTest
         FileHelper::createDirectory($this->messagePath, 0777);
     }
 
-    public function tearDown()
+    protected function tearDown(): void
     {
         parent::tearDown();
         FileHelper::removeDirectory($this->messagePath);
     }
 
     /**
-     * @inheritdoc
+     * {@inheritdoc}
      */
     protected function getDefaultConfig()
     {
@@ -51,7 +57,7 @@ class POMessageControllerTest extends BaseMessageControllerTest
     }
 
     /**
-     * @inheritdoc
+     * {@inheritdoc}
      */
     protected function saveMessages($messages, $category)
     {
@@ -68,7 +74,7 @@ class POMessageControllerTest extends BaseMessageControllerTest
     }
 
     /**
-     * @inheritdoc
+     * {@inheritdoc}
      */
     protected function loadMessages($category)
     {

@@ -1,8 +1,15 @@
 <?php
 
+/**
+ * @link https://www.yiiframework.com/
+ * @copyright Copyright (c) 2008 Yii Software LLC
+ * @license https://www.yiiframework.com/license/
+ */
+
 namespace yiiunit\framework\widgets;
 
-use Yii;
+use yiiunit\TestCase;
+use ReflectionMethod;
 use yii\widgets\Breadcrumbs;
 
 /**
@@ -10,22 +17,22 @@ use yii\widgets\Breadcrumbs;
  *
  * @group widgets
  */
-class BreadcrumbsTest extends \yiiunit\TestCase
+class BreadcrumbsTest extends TestCase
 {
     private $breadcrumbs;
 
-    protected function setUp()
+    protected function setUp(): void
     {
         parent::setUp();
         // dirty way to have Request object not throwing exception when running testHomeLinkNull()
-        $_SERVER['SCRIPT_FILENAME'] = "/index.php";
-        $_SERVER['SCRIPT_NAME'] = "/index.php";
+        $_SERVER['SCRIPT_FILENAME'] = '/index.php';
+        $_SERVER['SCRIPT_NAME'] = '/index.php';
 
         $this->mockWebApplication();
         $this->breadcrumbs = new Breadcrumbs();
     }
 
-    public function testHomeLinkNull()
+    public function testHomeLinkNull(): void
     {
         $this->breadcrumbs->homeLink = null;
         $this->breadcrumbs->links = ['label' => 'My Home Page', 'url' => 'http://my.example.com/yii2/link/page'];
@@ -33,7 +40,7 @@ class BreadcrumbsTest extends \yiiunit\TestCase
         $expectedHtml = "<ul class=\"breadcrumb\"><li><a href=\"/index.php\">Home</a></li>\n"
             . "<li class=\"active\">My Home Page</li>\n"
             . "<li class=\"active\">http://my.example.com/yii2/link/page</li>\n"
-            . "</ul>";
+            . '</ul>';
 
         ob_start();
         $this->breadcrumbs->run();
@@ -43,19 +50,19 @@ class BreadcrumbsTest extends \yiiunit\TestCase
         $this->assertEquals($expectedHtml, $actualHtml);
     }
 
-    public function testEmptyLinks()
+    public function testEmptyLinks(): void
     {
         $this->assertNull($this->breadcrumbs->run());
     }
 
-    public function testHomeLinkFalse()
+    public function testHomeLinkFalse(): void
     {
         $this->breadcrumbs->homeLink = false;
         $this->breadcrumbs->links = ['label' => 'My Home Page', 'url' => 'http://my.example.com/yii2/link/page'];
 
         $expectedHtml = "<ul class=\"breadcrumb\"><li class=\"active\">My Home Page</li>\n"
             . "<li class=\"active\">http://my.example.com/yii2/link/page</li>\n"
-            . "</ul>";
+            . '</ul>';
 
         ob_start();
         $this->breadcrumbs->run();
@@ -65,8 +72,7 @@ class BreadcrumbsTest extends \yiiunit\TestCase
         $this->assertEquals($expectedHtml, $actualHtml);
     }
 
-
-    public function testHomeLink()
+    public function testHomeLink(): void
     {
         $this->breadcrumbs->homeLink = ['label' => 'home-link'];
         $this->breadcrumbs->links = ['label' => 'My Home Page', 'url' => 'http://my.example.com/yii2/link/page'];
@@ -74,7 +80,7 @@ class BreadcrumbsTest extends \yiiunit\TestCase
         $expectedHtml = "<ul class=\"breadcrumb\"><li>home-link</li>\n"
             . "<li class=\"active\">My Home Page</li>\n"
             . "<li class=\"active\">http://my.example.com/yii2/link/page</li>\n"
-            . "</ul>";
+            . '</ul>';
 
         ob_start();
         $this->breadcrumbs->run();
@@ -84,15 +90,15 @@ class BreadcrumbsTest extends \yiiunit\TestCase
         $this->assertEquals($expectedHtml, $actualHtml);
     }
 
-    public function testRenderItemException()
+    public function testRenderItemException(): void
     {
         $link = ['url' => 'http://localhost/yii2'];
         $method = $this->reflectMethod();
-        $this->setExpectedException('yii\base\InvalidConfigException');
+        $this->expectException('yii\base\InvalidConfigException');
         $method->invoke($this->breadcrumbs, $link, $this->breadcrumbs->itemTemplate);
     }
 
-    public function testRenderItemLabelOnly()
+    public function testRenderItemLabelOnly(): void
     {
         $link = ['label' => 'My-<br>Test-Label'];
         $method = $this->reflectMethod();
@@ -107,7 +113,7 @@ class BreadcrumbsTest extends \yiiunit\TestCase
         $this->assertEquals("<li>My-<br>Test-Label</li>\n", $unencodedValue);
     }
 
-    public function testEncodeOverride()
+    public function testEncodeOverride(): void
     {
         $link = ['label' => 'My-<br>Test-Label', 'encode' => false];
         $method = $this->reflectMethod();
@@ -122,7 +128,7 @@ class BreadcrumbsTest extends \yiiunit\TestCase
         $this->assertEquals("<li>My-<br>Test-Label</li>\n", $unencodedValue);
     }
 
-    public function testRenderItemWithLabelAndUrl()
+    public function testRenderItemWithLabelAndUrl(): void
     {
         $link = ['label' => 'My-<br>Test-Label', 'url' => 'http://localhost/yii2'];
         $method = $this->reflectMethod();
@@ -136,7 +142,7 @@ class BreadcrumbsTest extends \yiiunit\TestCase
         $this->assertEquals("<li><a href=\"http://localhost/yii2\">My-<br>Test-Label</a></li>\n", $unencodedValue);
     }
 
-    public function testRenderItemTemplate()
+    public function testRenderItemTemplate(): void
     {
         $link = ['label' => 'My-<br>Test-Label', 'url' => 'http://localhost/yii2', 'template' => "<td>{link}</td>\n"];
         $method = $this->reflectMethod();
@@ -150,7 +156,7 @@ class BreadcrumbsTest extends \yiiunit\TestCase
         $this->assertEquals("<td><a href=\"http://localhost/yii2\">My-<br>Test-Label</a></td>\n", $unencodedValue);
     }
 
-    public function testExtraOptions()
+    public function testExtraOptions(): void
     {
         $link = [
             'label' => 'demo',
@@ -162,7 +168,7 @@ class BreadcrumbsTest extends \yiiunit\TestCase
         $this->assertEquals('<li><a class="external" href="http://example.com">demo</a></li>' . "\n", $result);
     }
 
-    public function testTag()
+    public function testTag(): void
     {
         $this->breadcrumbs->homeLink = ['label' => 'home-link'];
         $this->breadcrumbs->links = ['label' => 'My Home Page', 'url' => 'http://my.example.com/yii2/link/page'];
@@ -183,12 +189,19 @@ class BreadcrumbsTest extends \yiiunit\TestCase
     }
 
     /**
-     * Helper methods
+     * Helper methods.
+     * @param string $class
+     * @param string $method
      */
     protected function reflectMethod($class = '\yii\widgets\Breadcrumbs', $method = 'renderItem')
     {
-        $value = new \ReflectionMethod($class, $method);
-        $value->setAccessible(true);
+        $value = new ReflectionMethod($class, $method);
+
+        // @link https://wiki.php.net/rfc/deprecations_php_8_5#deprecate_reflectionsetaccessible
+        // @link https://wiki.php.net/rfc/make-reflection-setaccessible-no-op
+        if (PHP_VERSION_ID < 80100) {
+            $value->setAccessible(true);
+        }
 
         return $value;
     }

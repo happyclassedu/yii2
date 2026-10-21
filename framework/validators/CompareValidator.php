@@ -1,8 +1,9 @@
 <?php
+
 /**
- * @link http://www.yiiframework.com/
+ * @link https://www.yiiframework.com/
  * @copyright Copyright (c) 2008 Yii Software LLC
- * @license http://www.yiiframework.com/license/
+ * @license https://www.yiiframework.com/license/
  */
 
 namespace yii\validators;
@@ -10,13 +11,14 @@ namespace yii\validators;
 use Yii;
 use yii\base\InvalidConfigException;
 use yii\helpers\Html;
+use yii\helpers\Json;
 
 /**
  * CompareValidator compares the specified attribute value with another value.
  *
  * The value being compared with can be another attribute value
  * (specified via [[compareAttribute]]) or a constant (specified via
- * [[compareValue]]. When both are specified, the latter takes
+ * [[compareValue]]). When both are specified, the latter takes
  * precedence. If neither is specified, the attribute will be compared
  * with another attribute whose name is by appending "_repeat" to the source
  * attribute name.
@@ -38,14 +40,13 @@ class CompareValidator extends Validator
      * @since 2.0.11
      * @see type
      */
-    const TYPE_STRING = 'string';
+    public const TYPE_STRING = 'string';
     /**
      * Constant for specifying the comparison [[type]] by numeric values.
      * @since 2.0.11
      * @see type
      */
-    const TYPE_NUMBER = 'number';
-
+    public const TYPE_NUMBER = 'number';
     /**
      * @var string the name of the attribute to be compared with. When both this property
      * and [[compareValue]] are set, the latter takes precedence. If neither is set,
@@ -56,8 +57,17 @@ class CompareValidator extends Validator
      */
     public $compareAttribute;
     /**
-     * @var mixed the constant value to be compared with. When both this property
-     * and [[compareAttribute]] are set, this property takes precedence.
+     * @var mixed the constant value to be compared with or an anonymous function
+     * that returns the constant value. When both this property and
+     * [[compareAttribute]] are set, this property takes precedence.
+     * The signature of the anonymous function should be as follows,
+     *
+     * ```
+     * function($model, $attribute) {
+     *     // compute value to compare with
+     *     return $value;
+     * }
+     * ```
      * @see compareAttribute
      */
     public $compareValue;
@@ -84,7 +94,7 @@ class CompareValidator extends Validator
      */
     public $operator = '==';
     /**
-     * @var string the user-defined error message. It may contain the following placeholders which
+     * @var string|null the user-defined error message. It may contain the following placeholders which
      * will be replaced accordingly by the validator:
      *
      * - `{attribute}`: the label of the attribute being validated
@@ -97,7 +107,7 @@ class CompareValidator extends Validator
 
 
     /**
-     * @inheritdoc
+     * {@inheritdoc}
      */
     public function init()
     {
@@ -105,14 +115,10 @@ class CompareValidator extends Validator
         if ($this->message === null) {
             switch ($this->operator) {
                 case '==':
-                    $this->message = Yii::t('yii', '{attribute} must be equal to "{compareValueOrAttribute}".');
-                    break;
                 case '===':
                     $this->message = Yii::t('yii', '{attribute} must be equal to "{compareValueOrAttribute}".');
                     break;
                 case '!=':
-                    $this->message = Yii::t('yii', '{attribute} must not be equal to "{compareValueOrAttribute}".');
-                    break;
                 case '!==':
                     $this->message = Yii::t('yii', '{attribute} must not be equal to "{compareValueOrAttribute}".');
                     break;
@@ -135,7 +141,7 @@ class CompareValidator extends Validator
     }
 
     /**
-     * @inheritdoc
+     * {@inheritdoc}
      */
     public function validateAttribute($model, $attribute)
     {
@@ -146,11 +152,25 @@ class CompareValidator extends Validator
             return;
         }
         if ($this->compareValue !== null) {
+            if ($this->compareValue instanceof \Closure) {
+                $this->compareValue = call_user_func($this->compareValue, $model, $attribute);
+            }
             $compareLabel = $compareValue = $compareValueOrAttribute = $this->compareValue;
         } else {
             $compareAttribute = $this->compareAttribute === null ? $attribute . '_repeat' : $this->compareAttribute;
             $compareValue = $model->$compareAttribute;
             $compareLabel = $compareValueOrAttribute = $model->getAttributeLabel($compareAttribute);
+
+            if (!$this->skipOnError && $model->hasErrors($compareAttribute)) {
+                $this->addError(
+                    $model,
+                    $attribute,
+                    Yii::t('yii', '{compareAttribute} is invalid.'),
+                    ['compareAttribute' => $compareLabel]
+                );
+
+                return;
+            }
         }
 
         if (!$this->compareValues($this->operator, $this->type, $value, $compareValue)) {
@@ -163,12 +183,15 @@ class CompareValidator extends Validator
     }
 
     /**
-     * @inheritdoc
+     * {@inheritdoc}
      */
     protected function validateValue($value)
     {
         if ($this->compareValue === null) {
             throw new InvalidConfigException('CompareValidator::compareValue must be set.');
+        }
+        if ($this->compareValue instanceof \Closure) {
+            $this->compareValue = call_user_func($this->compareValue);
         }
         if (!$this->compareValues($this->operator, $this->type, $value, $this->compareValue)) {
             return [$this->message, [
@@ -176,9 +199,9 @@ class CompareValidator extends Validator
                 'compareValue' => $this->compareValue,
                 'compareValueOrAttribute' => $this->compareValue,
             ]];
-        } else {
-            return null;
         }
+
+        return null;
     }
 
     /**
@@ -221,18 +244,22 @@ class CompareValidator extends Validator
     }
 
     /**
-     * @inheritdoc
+     * {@inheritdoc}
      */
     public function clientValidateAttribute($model, $attribute, $view)
     {
+        if ($this->compareValue != null && $this->compareValue instanceof \Closure) {
+            $this->compareValue = call_user_func($this->compareValue);
+        }
+
         ValidationAsset::register($view);
         $options = $this->getClientOptions($model, $attribute);
 
-        return 'yii.validation.compare(value, messages, ' . json_encode($options, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) . ');';
+        return 'yii.validation.compare(value, messages, ' . Json::htmlEncode($options) . ', $form);';
     }
 
     /**
-     * @inheritdoc
+     * {@inheritdoc}
      */
     public function getClientOptions($model, $attribute)
     {
@@ -248,6 +275,7 @@ class CompareValidator extends Validator
             $compareAttribute = $this->compareAttribute === null ? $attribute . '_repeat' : $this->compareAttribute;
             $compareValue = $model->getAttributeLabel($compareAttribute);
             $options['compareAttribute'] = Html::getInputId($model, $compareAttribute);
+            $options['compareAttributeName'] = Html::getInputName($model, $compareAttribute);
             $compareLabel = $compareValueOrAttribute = $model->getAttributeLabel($compareAttribute);
         }
 
@@ -255,12 +283,12 @@ class CompareValidator extends Validator
             $options['skipOnEmpty'] = 1;
         }
 
-        $options['message'] = Yii::$app->getI18n()->format($this->message, [
+        $options['message'] = $this->formatMessage($this->message, [
             'attribute' => $model->getAttributeLabel($attribute),
             'compareAttribute' => $compareLabel,
             'compareValue' => $compareValue,
             'compareValueOrAttribute' => $compareValueOrAttribute,
-        ], Yii::$app->language);
+        ]);
 
         return $options;
     }

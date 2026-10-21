@@ -1,16 +1,18 @@
 <?php
+
 /**
- * @link http://www.yiiframework.com/
+ * @link https://www.yiiframework.com/
  * @copyright Copyright (c) 2008 Yii Software LLC
- * @license http://www.yiiframework.com/license/
+ * @license https://www.yiiframework.com/license/
  */
 
 namespace yii\web;
 
 use Yii;
-use yii\db\Connection;
-use yii\db\Query;
 use yii\base\InvalidConfigException;
+use yii\db\Connection;
+use yii\db\PdoValue;
+use yii\db\Query;
 use yii\di\Instance;
 
 /**
@@ -22,7 +24,7 @@ use yii\di\Instance;
  * The following example shows how you can configure the application to use DbSession:
  * Add the following to your application config under `components`:
  *
- * ```php
+ * ```
  * 'session' => [
  *     'class' => 'yii\web\DbSession',
  *     // 'db' => 'mydb',
@@ -49,7 +51,7 @@ class DbSession extends MultiFieldSession
      * @var string the name of the DB table that stores the session data.
      * The table should be pre-created as follows:
      *
-     * ```sql
+     * ```
      * CREATE TABLE session
      * (
      *     id CHAR(40) NOT NULL PRIMARY KEY,
@@ -74,6 +76,12 @@ class DbSession extends MultiFieldSession
      */
     public $sessionTable = '{{%session}}';
 
+    /**
+     * @var array Session fields to be written into session table columns
+     * @since 2.0.17
+     */
+    protected $fields = [];
+
 
     /**
      * Initializes the DbSession component.
@@ -87,9 +95,27 @@ class DbSession extends MultiFieldSession
     }
 
     /**
-     * Updates the current session ID with a newly generated one .
-     * Please refer to <http://php.net/session_regenerate_id> for more details.
-     * @param bool $deleteOldSession Whether to delete the old associated session file or not.
+     * Session open handler.
+     * @internal Do not call this method directly.
+     * @param string $savePath session save path
+     * @param string $sessionName session name
+     * @return bool whether session is opened successfully
+     */
+    public function openSession($savePath, $sessionName)
+    {
+        if ($this->getUseStrictMode()) {
+            $id = $this->getId();
+            if (!$this->getReadQuery($id)->exists($this->db)) {
+                //This session id does not exist, mark it for forced regeneration
+                $this->_forceRegenerateId = $id;
+            }
+        }
+
+        return parent::openSession($savePath, $sessionName);
+    }
+
+    /**
+     * {@inheritdoc}
      */
     public function regenerateID($deleteOldSession = false)
     {
@@ -108,12 +134,14 @@ class DbSession extends MultiFieldSession
             return;
         }
 
-        $query = new Query();
-        $row = $query->from($this->sessionTable)
-            ->where(['id' => $oldID])
-            ->createCommand($this->db)
-            ->queryOne();
-        if ($row !== false) {
+        $row = $this->db->useMaster(function () use ($oldID) {
+            return (new Query())->from($this->sessionTable)
+               ->where(['id' => $oldID])
+               ->createCommand($this->db)
+               ->queryOne();
+        });
+
+        if ($row !== false && $this->getIsActive()) {
             if ($deleteOldSession) {
                 $this->db->createCommand()
                     ->update($this->sessionTable, ['id' => $newID], ['id' => $oldID])
@@ -124,11 +152,19 @@ class DbSession extends MultiFieldSession
                     ->insert($this->sessionTable, $row)
                     ->execute();
             }
-        } else {
-            // shouldn't reach here normally
-            $this->db->createCommand()
-                ->insert($this->sessionTable, $this->composeFields($newID, ''))
-                ->execute();
+        }
+    }
+
+    /**
+     * Ends the current session and store session data.
+     * @since 2.0.17
+     */
+    public function close()
+    {
+        if ($this->getIsActive()) {
+            // prepare writeCallback fields before session closes
+            $this->fields = $this->composeFields();
+            YII_DEBUG ? session_write_close() : @session_write_close();
         }
     }
 
@@ -136,13 +172,11 @@ class DbSession extends MultiFieldSession
      * Session read handler.
      * @internal Do not call this method directly.
      * @param string $id session ID
-     * @return string the session data
+     * @return string|false the session data, or false on failure
      */
     public function readSession($id)
     {
-        $query = new Query();
-        $query->from($this->sessionTable)
-            ->where('[[expire]]>:expire AND [[id]]=:id', [':expire' => time(), ':id' => $id]);
+        $query = $this->getReadQuery($id);
 
         if ($this->readCallback !== null) {
             $fields = $query->one($this->db);
@@ -162,36 +196,36 @@ class DbSession extends MultiFieldSession
      */
     public function writeSession($id, $data)
     {
-        // exception must be caught in session write handler
-        // http://us.php.net/manual/en/function.session-set-save-handler.php#refsect1-function.session-set-save-handler-notes
-        try {
-            $query = new Query;
-            $exists = $query->select(['id'])
-                ->from($this->sessionTable)
-                ->where(['id' => $id])
-                ->createCommand($this->db)
-                ->queryScalar();
-            $fields = $this->composeFields($id, $data);
-            if ($exists === false) {
-                $this->db->createCommand()
-                    ->insert($this->sessionTable, $fields)
-                    ->execute();
-            } else {
-                unset($fields['id']);
-                $this->db->createCommand()
-                    ->update($this->sessionTable, $fields, ['id' => $id])
-                    ->execute();
-            }
-        } catch (\Exception $e) {
-            $exception = ErrorHandler::convertExceptionToString($e);
-            // its too late to use Yii logging here
-            error_log($exception);
-            if (YII_DEBUG) {
-                echo $exception;
-            }
-            return false;
+        if ($this->getUseStrictMode() && $id === $this->_forceRegenerateId) {
+            //Ignore write when forceRegenerate is active for this id
+            return true;
         }
 
+        // exception must be caught in session write handler
+        // https://www.php.net/manual/en/function.session-set-save-handler.php#refsect1-function.session-set-save-handler-notes
+        try {
+            // ensure backwards compatibility (fixed #9438)
+            if ($this->writeCallback && !$this->fields) {
+                $this->fields = $this->composeFields();
+            }
+            // ensure data consistency
+            if (!isset($this->fields['data'])) {
+                $this->fields['data'] = $data;
+            } else {
+                $_SESSION = $this->fields['data'];
+            }
+            // ensure 'id' and 'expire' are never affected by [[writeCallback]]
+            $this->fields = array_merge($this->fields, [
+                'id' => $id,
+                'expire' => time() + $this->getTimeout(),
+            ]);
+            $this->fields = $this->typecastFields($this->fields);
+            $this->db->createCommand()->upsert($this->sessionTable, $this->fields)->execute();
+            $this->fields = [];
+        } catch (\Exception $e) {
+            Yii::$app->errorHandler->handleException($e);
+            return false;
+        }
         return true;
     }
 
@@ -214,14 +248,42 @@ class DbSession extends MultiFieldSession
      * Session GC (garbage collection) handler.
      * @internal Do not call this method directly.
      * @param int $maxLifetime the number of seconds after which data will be seen as 'garbage' and cleaned up.
-     * @return bool whether session is GCed successfully
+     * @return int|false the number of deleted sessions on success, or false on failure
      */
     public function gcSession($maxLifetime)
     {
-        $this->db->createCommand()
+        return $this->db->createCommand()
             ->delete($this->sessionTable, '[[expire]]<:expire', [':expire' => time()])
             ->execute();
+    }
 
-        return true;
+    /**
+     * Generates a query to get the session from db
+     * @param string $id The id of the session
+     * @return Query
+     */
+    protected function getReadQuery($id)
+    {
+        return (new Query())
+            ->from($this->sessionTable)
+            ->where('[[expire]]>:expire AND [[id]]=:id', [':expire' => time(), ':id' => $id]);
+    }
+
+    /**
+     * Method typecasts $fields before passing them to PDO.
+     * Default implementation casts field `data` to `\PDO::PARAM_LOB`.
+     * You can override this method in case you need special type casting.
+     *
+     * @param array $fields Fields, that will be passed to PDO. Key - name, Value - value
+     * @return array
+     * @since 2.0.13
+     */
+    protected function typecastFields($fields)
+    {
+        if (isset($fields['data']) && !is_array($fields['data']) && !is_object($fields['data'])) {
+            $fields['data'] = new PdoValue($fields['data'], \PDO::PARAM_LOB);
+        }
+
+        return $fields;
     }
 }

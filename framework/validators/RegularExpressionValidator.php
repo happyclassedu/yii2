@@ -1,8 +1,9 @@
 <?php
+
 /**
- * @link http://www.yiiframework.com/
+ * @link https://www.yiiframework.com/
  * @copyright Copyright (c) 2008 Yii Software LLC
- * @license http://www.yiiframework.com/license/
+ * @license https://www.yiiframework.com/license/
  */
 
 namespace yii\validators;
@@ -10,8 +11,8 @@ namespace yii\validators;
 use Yii;
 use yii\base\InvalidConfigException;
 use yii\helpers\Html;
-use yii\web\JsExpression;
 use yii\helpers\Json;
+use yii\web\JsExpression;
 
 /**
  * RegularExpressionValidator validates that the attribute value matches the specified [[pattern]].
@@ -35,7 +36,7 @@ class RegularExpressionValidator extends Validator
 
 
     /**
-     * @inheritdoc
+     * {@inheritdoc}
      */
     public function init()
     {
@@ -49,7 +50,7 @@ class RegularExpressionValidator extends Validator
     }
 
     /**
-     * @inheritdoc
+     * {@inheritdoc}
      */
     protected function validateValue($value)
     {
@@ -61,7 +62,7 @@ class RegularExpressionValidator extends Validator
     }
 
     /**
-     * @inheritdoc
+     * {@inheritdoc}
      */
     public function clientValidateAttribute($model, $attribute, $view)
     {
@@ -72,7 +73,7 @@ class RegularExpressionValidator extends Validator
     }
 
     /**
-     * @inheritdoc
+     * {@inheritdoc}
      */
     public function getClientOptions($model, $attribute)
     {
@@ -81,9 +82,9 @@ class RegularExpressionValidator extends Validator
         $options = [
             'pattern' => new JsExpression($pattern),
             'not' => $this->not,
-            'message' => Yii::$app->getI18n()->format($this->message, [
+            'message' => $this->formatMessage($this->message, [
                 'attribute' => $model->getAttributeLabel($attribute),
-            ], Yii::$app->language),
+            ]),
         ];
         if ($this->skipOnEmpty) {
             $options['skipOnEmpty'] = 1;

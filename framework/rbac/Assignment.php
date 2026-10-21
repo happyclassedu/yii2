@@ -1,14 +1,14 @@
 <?php
+
 /**
- * @link http://www.yiiframework.com/
+ * @link https://www.yiiframework.com/
  * @copyright Copyright (c) 2008 Yii Software LLC
- * @license http://www.yiiframework.com/license/
+ * @license https://www.yiiframework.com/license/
  */
 
 namespace yii\rbac;
 
-use Yii;
-use yii\base\Object;
+use yii\base\BaseObject;
 
 /**
  * Assignment represents an assignment of a role to a user.
@@ -19,7 +19,7 @@ use yii\base\Object;
  * @author Alexander Kochetov <creocoder@gmail.com>
  * @since 2.0
  */
-class Assignment extends Object
+class Assignment extends BaseObject
 {
     /**
      * @var string|int user ID (see [[\yii\web\User::id]])

@@ -34,13 +34,13 @@ defined('YII_DEBUG') or define('YII_DEBUG', true);
 defined('YII_ENV') or define('YII_ENV', 'dev');
 
 // регистрация загрузчика классов Composer
-require(__DIR__ . '/../vendor/autoload.php');
+require __DIR__ . '/../vendor/autoload.php';
 
 // подключение файла класса Yii
-require(__DIR__ . '/../vendor/yiisoft/yii2/Yii.php');
+require __DIR__ . '/../vendor/yiisoft/yii2/Yii.php';
 
 // загрузка конфигурации приложения
-$config = require(__DIR__ . '/../config/web.php');
+$config = require __DIR__ . '/../config/web.php';
 
 // создание и конфигурация приложения, а также вызов метода для обработки входящего запроса
 (new yii\web\Application($config))->run();
@@ -57,21 +57,21 @@ $config = require(__DIR__ . '/../config/web.php');
 /**
  * Yii console bootstrap file.
  *
- * @link http://www.yiiframework.com/
+ * @link https://www.yiiframework.com/
  * @copyright Copyright (c) 2008 Yii Software LLC
- * @license http://www.yiiframework.com/license/
+ * @license https://www.yiiframework.com/license/
  */
 
 defined('YII_DEBUG') or define('YII_DEBUG', true);
 
 // регистрация загрузчика классов Composer
-require(__DIR__ . '/vendor/autoload.php');
+require __DIR__ . '/vendor/autoload.php';
 
 // подключение файла класса Yii
-require(__DIR__ . '/vendor/yiisoft/yii2/Yii.php');
+require __DIR__ . '/vendor/yiisoft/yii2/Yii.php';
 
 // загрузка конфигурации приложения
-$config = require(__DIR__ . '/config/console.php');
+$config = require __DIR__ . '/config/console.php';
 
 $application = new yii\console\Application($config);
 $exitCode = $application->run();

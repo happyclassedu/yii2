@@ -1,17 +1,18 @@
 <?php
+
 /**
- * @link http://www.yiiframework.com/
+ * @link https://www.yiiframework.com/
  * @copyright Copyright (c) 2008 Yii Software LLC
- * @license http://www.yiiframework.com/license/
+ * @license https://www.yiiframework.com/license/
  */
 
 namespace yii\filters\auth;
 
-use yii\web\User;
+use yii\web\IdentityInterface;
 use yii\web\Request;
 use yii\web\Response;
-use yii\web\IdentityInterface;
 use yii\web\UnauthorizedHttpException;
+use yii\web\User;
 
 /**
  * AuthInterface is the interface that should be implemented by auth method classes.
@@ -26,7 +27,7 @@ interface AuthInterface
      * @param User $user
      * @param Request $request
      * @param Response $response
-     * @return IdentityInterface the authenticated user identity. If authentication information is not provided, null will be returned.
+     * @return IdentityInterface|null the authenticated user identity. If authentication information is not provided, null will be returned.
      * @throws UnauthorizedHttpException if authentication information is provided but is invalid.
      */
     public function authenticate($user, $request, $response);

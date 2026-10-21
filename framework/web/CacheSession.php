@@ -1,14 +1,14 @@
 <?php
+
 /**
- * @link http://www.yiiframework.com/
+ * @link https://www.yiiframework.com/
  * @copyright Copyright (c) 2008 Yii Software LLC
- * @license http://www.yiiframework.com/license/
+ * @license https://www.yiiframework.com/license/
  */
 
 namespace yii\web;
 
-use Yii;
-use yii\caching\Cache;
+use yii\caching\CacheInterface;
 use yii\di\Instance;
 
 /**
@@ -24,14 +24,14 @@ use yii\di\Instance;
  * The following example shows how you can configure the application to use CacheSession:
  * Add the following to your application config under `components`:
  *
- * ```php
+ * ```
  * 'session' => [
  *     'class' => 'yii\web\CacheSession',
  *     // 'cache' => 'mycache',
  * ]
  * ```
  *
- * @property bool $useCustomStorage Whether to use custom storage. This property is read-only.
+ * @property-read bool $useCustomStorage Whether to use custom storage.
  *
  * @author Qiang Xue <qiang.xue@gmail.com>
  * @since 2.0
@@ -39,7 +39,7 @@ use yii\di\Instance;
 class CacheSession extends Session
 {
     /**
-     * @var Cache|array|string the cache object or the application component ID of the cache object.
+     * @var CacheInterface|array|string the cache object or the application component ID of the cache object.
      * The session data will be stored using this cache object.
      *
      * After the CacheSession object is created, if you want to change this property,
@@ -56,7 +56,7 @@ class CacheSession extends Session
     public function init()
     {
         parent::init();
-        $this->cache = Instance::ensure($this->cache, Cache::className());
+        $this->cache = Instance::ensure($this->cache, 'yii\caching\CacheInterface');
     }
 
     /**
@@ -70,10 +70,30 @@ class CacheSession extends Session
     }
 
     /**
+     * Session open handler.
+     * @internal Do not call this method directly.
+     * @param string $savePath session save path
+     * @param string $sessionName session name
+     * @return bool whether session is opened successfully
+     */
+    public function openSession($savePath, $sessionName)
+    {
+        if ($this->getUseStrictMode()) {
+            $id = $this->getId();
+            if (!$this->cache->exists($this->calculateKey($id))) {
+                //This session id does not exist, mark it for forced regeneration
+                $this->_forceRegenerateId = $id;
+            }
+        }
+
+        return parent::openSession($savePath, $sessionName);
+    }
+
+    /**
      * Session read handler.
      * @internal Do not call this method directly.
      * @param string $id session ID
-     * @return string the session data
+     * @return string|false the session data, or false on failure
      */
     public function readSession($id)
     {
@@ -91,6 +111,11 @@ class CacheSession extends Session
      */
     public function writeSession($id, $data)
     {
+        if ($this->getUseStrictMode() && $id === $this->_forceRegenerateId) {
+            //Ignore write when forceRegenerate is active for this id
+            return true;
+        }
+
         return $this->cache->set($this->calculateKey($id), $data, $this->getTimeout());
     }
 

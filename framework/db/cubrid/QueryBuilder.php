@@ -1,14 +1,17 @@
 <?php
+
 /**
- * @link http://www.yiiframework.com/
+ * @link https://www.yiiframework.com/
  * @copyright Copyright (c) 2008 Yii Software LLC
- * @license http://www.yiiframework.com/license/
+ * @license https://www.yiiframework.com/license/
  */
 
 namespace yii\db\cubrid;
 
-use yii\base\InvalidParamException;
+use yii\base\InvalidArgumentException;
+use yii\base\NotSupportedException;
 use yii\db\Exception;
+use yii\db\Expression;
 
 /**
  * QueryBuilder is the query builder for CUBRID databases (version 9.3.x and higher).
@@ -29,6 +32,7 @@ class QueryBuilder extends \yii\db\QueryBuilder
         Schema::TYPE_CHAR => 'char(1)',
         Schema::TYPE_STRING => 'varchar(255)',
         Schema::TYPE_TEXT => 'varchar',
+        Schema::TYPE_TINYINT => 'smallint',
         Schema::TYPE_SMALLINT => 'smallint',
         Schema::TYPE_INTEGER => 'int',
         Schema::TYPE_BIGINT => 'bigint',
@@ -44,10 +48,75 @@ class QueryBuilder extends \yii\db\QueryBuilder
         Schema::TYPE_MONEY => 'decimal(19,4)',
     ];
 
+
     /**
-     * @inheritdoc
+     * {@inheritdoc}
      */
-    protected $likeEscapeCharacter = '\\';
+    protected function defaultExpressionBuilders()
+    {
+        return array_merge(parent::defaultExpressionBuilders(), [
+            'yii\db\conditions\LikeCondition' => 'yii\db\cubrid\conditions\LikeConditionBuilder',
+        ]);
+    }
+
+    /**
+     * {@inheritdoc}
+     * @see https://www.cubrid.org/manual/en/9.3.0/sql/query/merge.html
+     */
+    public function upsert($table, $insertColumns, $updateColumns, &$params)
+    {
+        list($uniqueNames, $insertNames, $updateNames) = $this->prepareUpsertColumns($table, $insertColumns, $updateColumns, $constraints);
+        if (empty($uniqueNames)) {
+            return $this->insert($table, $insertColumns, $params);
+        }
+        if ($updateNames === []) {
+            // there are no columns to update
+            $updateColumns = false;
+        }
+
+        $onCondition = ['or'];
+        $quotedTableName = $this->db->quoteTableName($table);
+        foreach ($constraints as $constraint) {
+            $constraintCondition = ['and'];
+            foreach ($constraint->columnNames as $name) {
+                $quotedName = $this->db->quoteColumnName($name);
+                $constraintCondition[] = "$quotedTableName.$quotedName=\"EXCLUDED\".$quotedName";
+            }
+            $onCondition[] = $constraintCondition;
+        }
+        $on = $this->buildCondition($onCondition, $params);
+        list(, $placeholders, $values, $params) = $this->prepareInsertValues($table, $insertColumns, $params);
+        $mergeSql = 'MERGE INTO ' . $this->db->quoteTableName($table) . ' '
+            . 'USING (' . (!empty($placeholders) ? 'VALUES (' . implode(', ', $placeholders) . ')' : ltrim($values, ' ')) . ') AS "EXCLUDED" (' . implode(', ', $insertNames) . ') '
+            . "ON ($on)";
+        $insertValues = [];
+        foreach ($insertNames as $name) {
+            $quotedName = $this->db->quoteColumnName($name);
+            if (strrpos($quotedName, '.') === false) {
+                $quotedName = '"EXCLUDED".' . $quotedName;
+            }
+            $insertValues[] = $quotedName;
+        }
+        $insertSql = 'INSERT (' . implode(', ', $insertNames) . ')'
+            . ' VALUES (' . implode(', ', $insertValues) . ')';
+        if ($updateColumns === false) {
+            return "$mergeSql WHEN NOT MATCHED THEN $insertSql";
+        }
+
+        if ($updateColumns === true) {
+            $updateColumns = [];
+            foreach ($updateNames as $name) {
+                $quotedName = $this->db->quoteColumnName($name);
+                if (strrpos($quotedName, '.') === false) {
+                    $quotedName = '"EXCLUDED".' . $quotedName;
+                }
+                $updateColumns[$name] = new Expression($quotedName);
+            }
+        }
+        list($updates, $params) = $this->prepareUpdateSets($table, $updateColumns, $params);
+        $updateSql = 'UPDATE SET ' . implode(', ', $updates);
+        return "$mergeSql WHEN MATCHED THEN $updateSql WHEN NOT MATCHED THEN $insertSql";
+    }
 
     /**
      * Creates a SQL statement for resetting the sequence value of a table's primary key.
@@ -57,7 +126,7 @@ class QueryBuilder extends \yii\db\QueryBuilder
      * @param mixed $value the value for the primary key of the next new row inserted. If this is not set,
      * the next new row's primary key will have a value 1.
      * @return string the SQL statement for resetting sequence
-     * @throws InvalidParamException if the table does not exist or there is no sequence associated with the table.
+     * @throws InvalidArgumentException if the table does not exist or there is no sequence associated with the table.
      */
     public function resetSequence($tableName, $value = null)
     {
@@ -73,20 +142,20 @@ class QueryBuilder extends \yii\db\QueryBuilder
 
             return 'ALTER TABLE ' . $this->db->schema->quoteTableName($tableName) . " AUTO_INCREMENT=$value;";
         } elseif ($table === null) {
-            throw new InvalidParamException("Table not found: $tableName");
-        } else {
-            throw new InvalidParamException("There is not sequence associated with table '$tableName'.");
+            throw new InvalidArgumentException("Table not found: $tableName");
         }
+
+        throw new InvalidArgumentException("There is not sequence associated with table '$tableName'.");
     }
 
     /**
-     * @inheritdoc
+     * {@inheritdoc}
      */
     public function buildLimit($limit, $offset)
     {
         $sql = '';
         // limit is not optional in CUBRID
-        // http://www.cubrid.org/manual/90/en/LIMIT%20Clause
+        // https://www.cubrid.org/manual/en/9.3.0/sql/query/select.html#limit-clause
         // "You can specify a very big integer for row_count to display to the last row, starting from a specific row."
         if ($this->hasLimit($limit)) {
             $sql = 'LIMIT ' . $limit;
@@ -101,7 +170,7 @@ class QueryBuilder extends \yii\db\QueryBuilder
     }
 
     /**
-     * @inheritdoc
+     * {@inheritdoc}
      * @since 2.0.8
      */
     public function selectExists($rawSql)
@@ -110,7 +179,42 @@ class QueryBuilder extends \yii\db\QueryBuilder
     }
 
     /**
-     * @inheritdoc
+     * {@inheritdoc}
+     * @see https://www.cubrid.org/manual/en/9.3.0/sql/schema/table.html#drop-index-clause
+     */
+    public function dropIndex($name, $table)
+    {
+        /** @var Schema $schema */
+        $schema = $this->db->getSchema();
+        foreach ($schema->getTableUniques($table) as $unique) {
+            if ($unique->name === $name) {
+                return $this->dropUnique($name, $table);
+            }
+        }
+
+        return 'DROP INDEX ' . $this->db->quoteTableName($name) . ' ON ' . $this->db->quoteTableName($table);
+    }
+
+    /**
+     * {@inheritdoc}
+     * @throws NotSupportedException this is not supported by CUBRID.
+     */
+    public function addCheck($name, $table, $expression)
+    {
+        throw new NotSupportedException(__METHOD__ . ' is not supported by CUBRID.');
+    }
+
+    /**
+     * {@inheritdoc}
+     * @throws NotSupportedException this is not supported by CUBRID.
+     */
+    public function dropCheck($name, $table)
+    {
+        throw new NotSupportedException(__METHOD__ . ' is not supported by CUBRID.');
+    }
+
+    /**
+     * {@inheritdoc}
      * @since 2.0.8
      */
     public function addCommentOnColumn($table, $column, $comment)
@@ -126,7 +230,7 @@ class QueryBuilder extends \yii\db\QueryBuilder
     }
 
     /**
-     * @inheritdoc
+     * {@inheritdoc}
      * @since 2.0.8
      */
     public function addCommentOnTable($table, $comment)
@@ -135,7 +239,7 @@ class QueryBuilder extends \yii\db\QueryBuilder
     }
 
     /**
-     * @inheritdoc
+     * {@inheritdoc}
      * @since 2.0.8
      */
     public function dropCommentFromColumn($table, $column)
@@ -144,7 +248,7 @@ class QueryBuilder extends \yii\db\QueryBuilder
     }
 
     /**
-     * @inheritdoc
+     * {@inheritdoc}
      * @since 2.0.8
      */
     public function dropCommentFromTable($table)
@@ -158,7 +262,7 @@ class QueryBuilder extends \yii\db\QueryBuilder
      *
      * @param string $table table name
      * @param string $column column name
-     * @return null|string the column definition
+     * @return string|null the column definition
      * @throws Exception in case when table does not contain column
      * @since 2.0.8
      */
@@ -183,6 +287,7 @@ class QueryBuilder extends \yii\db\QueryBuilder
                 }
             }
         }
+
         return null;
     }
 }

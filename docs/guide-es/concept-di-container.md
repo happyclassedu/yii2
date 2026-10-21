@@ -2,7 +2,7 @@ Contenedor de Inyección de Dependencias
 =======================================
 
 Un contenedor de Inyección de Dependencias (ID), es un objeto que sabe como instancias y configurar objetos y sus 
-objetos dependientes. El [articulo de Martin](http://martinfowler.com/articles/injection.html) contiene una buena 
+objetos dependientes. El [articulo de Martin](https://martinfowler.com/articles/injection.html) contiene una buena 
 explicación de porque son útiles los contenedores de ID. A continuación explicaremos como usar el contenedor de ID que 
 proporciona Yii.
 
@@ -14,7 +14,7 @@ de ID:
 
 * Inyección de constructores;
 * Inyección de setters y propiedades;
-* Inyección de [llamadas de retorno PHP](http://php.net/manual/es/language.types.callable.php);
+* Inyección de [llamadas de retorno PHP](https://www.php.net/manual/es/language.types.callable.php);
 
 ### Inyección de Constructores <span id="constructor-injection"></span>
 
@@ -44,9 +44,9 @@ registra una dependencia o se crea un nuevo objeto, se puede proporcionar una co
 para inyectar las dependencias a través de sus correspondientes setters y propiedades. Por ejemplo,
 
 ```php
-use yii\base\Object;
+use yii\base\BaseObject;
 
-class Foo extends Object
+class Foo extends BaseObject
 {
     public $bar;
 
@@ -75,7 +75,7 @@ En este caso, el contenedor usará una llamada de retorno PHP registrada para co
 clase. La llamada de retorno se responsabiliza de que dependencias debe inyectar al nuevo objeto creado. Por ejemplo,
 
 ```php
-$container->set('Foo', function () {
+$container->set('Foo', function ($container, $params, $config) {
     return new Foo(new Bar);
 });
 
@@ -185,7 +185,7 @@ una nueva instancia de `UserLister` con una simple llamada a `get('userLister')`
 ```php
 namespace app\models;
 
-use yii\base\Object;
+use yii\base\BaseObject;
 use yii\db\Connection;
 use yii\di\Container;
 
@@ -194,7 +194,7 @@ interface UserFinderInterface
     function findUser();
 }
 
-class UserFinder extends Object implements UserFinderInterface
+class UserFinder extends BaseObject implements UserFinderInterface
 {
     public $db;
 
@@ -209,7 +209,7 @@ class UserFinder extends Object implements UserFinderInterface
     }
 }
 
-class UserLister extends Object
+class UserLister extends BaseObject
 {
     public $finder;
 
@@ -316,7 +316,7 @@ Resumen <span id="summary"></span>
 
 Tanto la inyección de dependencias como el [localizador de servicios](concept-service-locator.md) son patrones de 
 diseño populares que permiten construir software con acoplamiento flexible y más fácil de testear. Se recomienda 
-encarecida la lectura del articulo de [Martin](http://martinfowler.com/articles/injection.html) para obtener una mejor 
+encarecida la lectura del articulo de [Martin](https://martinfowler.com/articles/injection.html) para obtener una mejor 
 comprensión de la inyección de dependencias y de la localización de servicios.
 
 Yii implementa su propio [localizador de servicios](concept-service-locator.md) por encima del contenedor de ID. 

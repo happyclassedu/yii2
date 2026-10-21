@@ -3,14 +3,16 @@ Réponses
 
 Quand une application a terminé la prise en charge d'une [requête](runtime-requests.md), elle génère un objet [[yii\web\Response|response]] et l'envoie à l'utilisateur final. L'objet `response` contient des informations telles que le code d'état HTTP, les entêtes HTTP et le corps. Le but ultime du développement d'applications Web est essentiellement du construire de tels objets `response` pour des requêtes variées. 
 
-Dans la plupart des cas, vous devez travailler avec le [composant d'application](structure-application-components.md) `response` qui, par défaut, est une instance de [[yii\web\Response]]. Néanmoins, Yii vous permet également de créer vos propres objets `response` et de les envoyer à l'utilisateur final comme nous l'exliquons dans ce qui suit.
+Dans la plupart des cas, vous devez travailler avec le [composant d'application](structure-application-components.md) `response` qui, par défaut, est une instance de [[yii\web\Response]]. Néanmoins, Yii vous permet également de créer vos propres objets `response` et de les envoyer à l'utilisateur final comme nous l'expliquons dans ce qui suit.
 
-Dans cette section, nous décrivons comment composer et enovoyer des réponses à l'utilisateur final. 
+Dans cette section, nous décrivons comment composer et envoyer des réponses à l'utilisateur final. 
 
 
 ## Code d'état <span id="status-code"></span>
 
-Une de première chose que vous devez faire lorsque vous construisez une réponse est de déclarer si la requête a été correctement prise en charge ou pas. Cela se fait en définissant la propriété  [[yii\web\Response::statusCode (code d'état)]] qui peut prendre un des [code d'état HTTP](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html) valides. Par exemple, pour indiquer que la requête a été prise en charge avec succès, vous pouvez définir le code à 200, comme ceci :
+Une des premières choses que vous devez faire lorsque vous construisez une réponse est de déclarer si la requête a été correctement prise en charge ou pas. Cela se fait en définissant la propriété  
+[[yii\web\Response::statusCode|code d'état]]
+qui peut prendre un des [codes d'état HTTP](https://tools.ietf.org/html/rfc2616#section-10) valides. Par exemple, pour indiquer que la requête a été prise en charge avec succès, vous pouvez définir le code à 200, comme ceci :
 
 ```php
 Yii::$app->response->statusCode = 200;
@@ -141,7 +143,7 @@ Vous pouvez rediriger le navigateur sur une URL en appelant la méthode [[yii\we
 ```php
 public function actionOld()
 {
-    return $this->redirect('http://example.com/new', 301);
+    return $this->redirect('https://example.com/new', 301);
 }
 ```
 
@@ -150,7 +152,7 @@ Dans le code précédent, la méthode d'action retourne le résultat de la méth
 Dans des endroits autres que les méthodes d'action, vous devez appeler la méthode [[yii\web\Response::redirect()]] directement, suivi d'un appel chaîné à la méthode [[yii\web\Response::send()]] pour garantir qu'aucun contenu supplémentaire ne sera ajouté à la réponse. 
 
 ```php
-\Yii::$app->response->redirect('http://example.com/new', 301)->send();
+\Yii::$app->response->redirect('https://example.com/new', 301)->send();
 ```
 
 > Info: par défaut la méthode [[yii\web\Response::redirect()]] définit le code d'état à 302 pour indiquer au navigateur que la ressource requise est *temporairement* située sous un URI différent. Vous pouvez passer un code 301 pour dire au navigateur que la ressource a été déplacée *de manière permanente*.
@@ -158,6 +160,7 @@ Dans des endroits autres que les méthodes d'action, vous devez appeler la méth
 Lorsque la requête courante est une requête AJAX, l'envoi d'un entête `Location` ne provoque pas automatiquement une redirection du navigateur. Pour pallier ce problème, la méthode [[yii\web\Response::redirect()]] définit un entête  `X-Redirect` avec l'URL de redirection comme valeur. Du côté client, vous pouvez écrire un code JavaScript pour lire l'entête et rediriger le navigateur sur l'URL transmise. 
 
 > Info: Yii est fourni avec un fichier JavaScript `yii.js` qui fournit un jeu d'utilitaires JavaScript, y compris l'utilitaire de redirection basé sur l'entête `X-Redirect`. Par conséquent, si vous utilisez ce fichier JavaScript (en enregistrant le paquet de ressources [[yii\web\YiiAsset]] ), vous n'avez rien à écrire pour prendre en charge la redirection AJAX. 
+De l'information complémentaire sur  `yii.js` est disponible à la [section Scripts client](output-client-scripts.md#yii.js).
 
 ## Envoi de fichiers <span id="sending-files"></span>
 
@@ -184,11 +187,11 @@ Si vous appelez la méthode d'envoi de fichiers dans des endroits autres qu'une 
 
 Quelques serveurs Web assurent une prise en charge spéciale de l'envoi de fichiers appelée *X-Sendfile*. L'idée est de rediriger la requête d'un fichier sur le serveur Web qui sert directement le fichier. En conséquence, l'application Web peut terminer plus rapidement tandis que le serveur Web est en train d'envoyer le fichier. Pour utiliser cette fonctionnalité, vous pouvez appeler la méthode [[yii\web\Response::xSendFile()]]. La liste suivante résume, comment activer la fonctionnalité `X-Sendfile` pour quelques serveurs Web populaires :
 
-- Apache: [X-Sendfile](http://tn123.org/mod_xsendfile)
-- Lighttpd v1.4: [X-LIGHTTPD-send-file](http://redmine.lighttpd.net/projects/lighttpd/wiki/X-LIGHTTPD-send-file)
-- Lighttpd v1.5: [X-Sendfile](http://redmine.lighttpd.net/projects/lighttpd/wiki/X-LIGHTTPD-send-file)
-- Nginx: [X-Accel-Redirect](http://wiki.nginx.org/XSendfile)
-- Cherokee: [X-Sendfile and X-Accel-Redirect](http://www.cherokee-project.com/doc/other_goodies.html#x-sendfile)
+- Apache: [X-Sendfile](https://tn123.org/mod_xsendfile)
+- Lighttpd v1.4: [X-LIGHTTPD-send-file](https://redmine.lighttpd.net/projects/lighttpd/wiki/X-LIGHTTPD-send-file)
+- Lighttpd v1.5: [X-Sendfile](https://redmine.lighttpd.net/projects/lighttpd/wiki/X-LIGHTTPD-send-file)
+- Nginx: [X-Accel-Redirect](https://www.nginx.com/resources/wiki/start/topics/examples/xsendfile/)
+- Cherokee: [X-Sendfile and X-Accel-Redirect](https://www.cherokee-project.com/doc/other_goodies.html#x-sendfile)
 
 
 ## Envoi de la réponse <span id="sending-response"></span>

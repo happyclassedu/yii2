@@ -25,7 +25,7 @@ class SiteController extends Controller
     {
         return [
             'access' => [
-                'class' => AccessControl::className(),
+                'class' => AccessControl::class,
                 'only' => ['login', 'logout', 'signup'],
                 'rules' => [
                     [
@@ -70,7 +70,7 @@ You may customize this behavior by configuring the [[yii\filters\AccessControl::
 
 ```php
 [
-    'class' => AccessControl::className(),
+    'class' => AccessControl::class,
     ...
     'denyCallback' => function ($rule, $action) {
         throw new \Exception('You are not allowed to access this page');
@@ -100,6 +100,9 @@ The comparison is case-sensitive. If this option is empty or not set, it means t
    Using other role names will trigger the invocation of [[yii\web\User::can()]], which requires enabling RBAC
    (to be described in the next subsection). If this option is empty or not set, it means this rule applies to all roles.
 
+ * [[yii\filters\AccessRule::roleParams|roleParams]]: specifies the parameters that will be passed to [[yii\web\User::can()]].
+   See the section below describing RBAC rules to see how it can be used. If this option is empty or not set, then no parameters will be passed.
+
  * [[yii\filters\AccessRule::ips|ips]]: specifies which [[yii\web\Request::userIP|client IP addresses]] this rule matches.
 An IP address can contain the wildcard `*` at the end so that it matches IP addresses with the same prefix.
 For example, '192.168.*' matches all IP addresses in the segment '192.168.'. If this option is empty or not set,
@@ -126,7 +129,7 @@ class SiteController extends Controller
     {
         return [
             'access' => [
-                'class' => AccessControl::className(),
+                'class' => AccessControl::class,
                 'only' => ['special-callback'],
                 'rules' => [
                     [
@@ -153,10 +156,10 @@ class SiteController extends Controller
 ## Role Based Access Control (RBAC) <span id="rbac"></span>
 
 Role-Based Access Control (RBAC) provides a simple yet powerful centralized access control. Please refer to
-the [Wikipedia](http://en.wikipedia.org/wiki/Role-based_access_control) for details about comparing RBAC
+the [Wikipedia](https://en.wikipedia.org/wiki/Role-based_access_control) for details about comparing RBAC
 with other more traditional access control schemes.
 
-Yii implements a General Hierarchical RBAC, following the [NIST RBAC model](http://csrc.nist.gov/rbac/sandhu-ferraiolo-kuhn-00.pdf).
+Yii implements a General Hierarchical RBAC, following the [NIST RBAC model](https://csrc.nist.gov/CSRC/media/Publications/conference-paper/1992/10/13/role-based-access-controls/documents/ferraiolo-kuhn-92.pdf).
 It provides the RBAC functionality through the [[yii\rbac\ManagerInterface|authManager]] [application component](structure-application-components.md).
 
 Using RBAC involves two parts of work. The first part is to build up the RBAC authorization data, and the second
@@ -222,6 +225,8 @@ return [
     'components' => [
         'authManager' => [
             'class' => 'yii\rbac\DbManager',
+            // uncomment if you want to cache RBAC items hierarchy
+            // 'cache' => 'cache',
         ],
         // ...
     ],
@@ -247,6 +252,13 @@ Read more about working with migrations from different namespaces in
 
 The `authManager` can now be accessed via `\Yii::$app->authManager`.
 
+> Warning: RBAC data is persisted with PHP's native `serialize()` and read back with `unserialize()`.
+  [[yii\rbac\DbManager]] serializes the whole `Rule` object into `auth_rule.data` and the item's `Item::$data` into
+  `auth_item.data`; [[yii\rbac\PhpManager]] serializes only `Rule` objects into its rules file (item data is stored as
+  plain PHP). Keep these stores trusted: the database and the `@app/rbac` files must be writable only by the
+  application, since an attacker who can write this data can stage a deserialization gadget. See
+  [Avoiding unsafe deserialization](security-best-practices.md#avoiding-unsafe-deserialization).
+
 
 ### Building Authorization Data <span id="generating-rbac-data"></span>
 
@@ -259,9 +271,82 @@ Building authorization data is all about the following tasks:
 - assigning roles to users.
 
 Depending on authorization flexibility requirements the tasks above could be done in different ways.
+If your permissions hierarchy is meant to be changed by developers only, you can use either migrations
+or a console command. Migration pro is that it could be executed along with other migrations. Console
+command pro is that you have a good overview of the hierarchy in the code rather than it being scattered
+among multiple migrations.
+
+Either way in the end you'll get the following RBAC hierarchy:
+
+![Simple RBAC hierarchy](images/rbac-hierarchy-1.png "Simple RBAC hierarchy")
+
+In case you need permissions hierarchy to be formed dynamically you need a UI or a console command. API used to
+build the hierarchy itself won't be different.
+
+#### Using migrations
+
+You can use [migrations](db-migrations.md)
+to initialize and modify hierarchy via APIs offered by `authManager`.
+
+Create new migration using `./yii migrate/create init_rbac` then implement creating a hierarchy:
+
+```php
+<?php
+use yii\db\Migration;
+
+class m170124_084304_init_rbac extends Migration
+{
+    public function up()
+    {
+        $auth = Yii::$app->authManager;
+
+        // add "createPost" permission
+        $createPost = $auth->createPermission('createPost');
+        $createPost->description = 'Create a post';
+        $auth->add($createPost);
+
+        // add "updatePost" permission
+        $updatePost = $auth->createPermission('updatePost');
+        $updatePost->description = 'Update post';
+        $auth->add($updatePost);
+
+        // add "author" role and give this role the "createPost" permission
+        $author = $auth->createRole('author');
+        $auth->add($author);
+        $auth->addChild($author, $createPost);
+
+        // add "admin" role and give this role the "updatePost" permission
+        // as well as the permissions of the "author" role
+        $admin = $auth->createRole('admin');
+        $auth->add($admin);
+        $auth->addChild($admin, $updatePost);
+        $auth->addChild($admin, $author);
+
+        // Assign roles to users. 1 and 2 are IDs returned by IdentityInterface::getId()
+        // usually implemented in your User model.
+        $auth->assign($author, 2);
+        $auth->assign($admin, 1);
+    }
+    
+    public function down()
+    {
+        $auth = Yii::$app->authManager;
+
+        $auth->removeAll();
+    }
+}
+```
+
+> If you don't want to hardcode which users have certain roles, don't put `->assign()` calls in migrations. Instead,
+  create either UI or console command to manage assignments.
+
+Migration could be applied by using `yii migrate`.
+
+### Using console command
 
 If your permissions hierarchy doesn't change at all and you have a fixed number of users you can create a
-[console command](tutorial-console.md#create-command) that will initialize authorization data once via APIs offered by `authManager`:
+-[console command](tutorial-console.md#create-command) that will initialize authorization data once via
+APIs offered by `authManager`:
 
 ```php
 <?php
@@ -275,7 +360,8 @@ class RbacController extends Controller
     public function actionInit()
     {
         $auth = Yii::$app->authManager;
-
+        $auth->removeAll();
+        
         // add "createPost" permission
         $createPost = $auth->createPermission('createPost');
         $createPost->description = 'Create a post';
@@ -308,10 +394,17 @@ class RbacController extends Controller
 
 > Note: If you are using advanced template, you need to put your `RbacController` inside `console/controllers` directory
   and change namespace to `console\controllers`.
+  
+The command above could be executed from console the following way:
 
-After executing the command with `yii rbac/init` we'll get the following hierarchy:
+```
+yii rbac/init
+```
 
-![Simple RBAC hierarchy](images/rbac-hierarchy-1.png "Simple RBAC hierarchy")
+> If you don't want to hardcode what users have certain roles, don't put `->assign()` calls into the command. Instead,
+  create either UI or console command to manage assignments.
+
+## Assigning roles to users
 
 Author can create post, admin can update post and do everything author can.
 
@@ -356,6 +449,7 @@ created previously author cannot edit his own post. Let's fix it. First we need 
 namespace app\rbac;
 
 use yii\rbac\Rule;
+use app\models\Post;
 
 /**
  * Checks if authorID matches user passed via params
@@ -451,7 +545,7 @@ public function behaviors()
 {
     return [
         'access' => [
-            'class' => AccessControl::className(),
+            'class' => AccessControl::class,
             'rules' => [
                 [
                     'allow' => true,
@@ -487,6 +581,35 @@ public function behaviors()
 If all the CRUD operations are managed together then it's a good idea to use a single permission, like `managePost`, and
 check it in [[yii\web\Controller::beforeAction()]].
 
+In the above example, no parameters are passed with the roles specified for accessing an action, but in case of the
+`updatePost` permission, we need to pass a `post` parameter for it to work properly.
+You can pass parameters to [[yii\web\User::can()]] by specifying [[yii\filters\AccessRule::roleParams|roleParams]] on
+the access rule:
+
+```php
+[
+    'allow' => true,
+    'actions' => ['update'],
+    'roles' => ['updatePost'],
+    'roleParams' => function() {
+        return ['post' => Post::findOne(['id' => Yii::$app->request->get('id')])];
+    },
+],
+```
+
+In the above example, [[yii\filters\AccessRule::roleParams|roleParams]] is a Closure that will be evaluated when
+the access rule is checked, so the model will only be loaded when needed.
+If the creation of role parameters is a simple operation, you may just specify an array, like so:
+
+```php
+[
+    'allow' => true,
+    'actions' => ['update'],
+    'roles' => ['updatePost'],
+    'roleParams' => ['postId' => Yii::$app->request->get('id')],
+],
+```
+
 ### Using Default Roles <span id="using-default-roles"></span>
 
 A default role is a role that is *implicitly* assigned to *all* users. The call to [[yii\rbac\ManagerInterface::assign()]]
@@ -501,7 +624,7 @@ assign each user to an RBAC role. Let's use an example to show how this can be d
 
 Assume in the user table, you have a `group` column which uses 1 to represent the administrator group and 2 the author group.
 You plan to have two RBAC roles `admin` and `author` to represent the permissions for these two groups, respectively.
-You can set up the RBAC data as follows,
+You can set up the RBAC data as follows, first create a class:
 
 
 ```php
@@ -530,7 +653,11 @@ class UserGroupRule extends Rule
         return false;
     }
 }
+```
 
+Then create your own command/migration as explained [in the previous section](#generating-rbac-data):
+
+```php
 $auth = Yii::$app->authManager;
 
 $rule = new \app\rbac\UserGroupRule;

@@ -21,10 +21,10 @@
 
 ```php
 // подключение автозагрузчика Composer
-require(__DIR__ . '/../vendor/autoload.php');
+require __DIR__ . '/../vendor/autoload.php';
 
 // подключение файла класса Yii
-require(__DIR__ . '/../vendor/yiisoft/yii2/Yii.php');
+require __DIR__ . '/../vendor/yiisoft/yii2/Yii.php';
 ```
 
 ### Использование отдельных библиотек <span id="using-downloaded-libs"></span>
@@ -34,7 +34,7 @@ require(__DIR__ . '/../vendor/yiisoft/yii2/Yii.php');
 
 Если библиотека использует собственный автозагрузчик классов, его можно подключить во [входном скрипте](structure-entry-scripts.md) приложения. Желательно подключить его до того, как подключается файл `Yii.php`, чтобы при автоматической загрузке классов у автозагрузчика классов Yii был приоритет.
 
-Если библиотека не поставляется с автозагрузчиком классов, но конвенция именования ее классов соответствует [PSR-4](http://www.php-fig.org/psr/psr-4/), для загрузки ее классов можно использовать автозагрузчик Yii. Для этого достаточно для каждого корневого пространства имен, которые используются в ее классах, объявить [корневой псевдоним](concept-aliases.md#defining-aliases). Предположим, что библиотека установлена в директорию `vendor/foo/bar`, а ее классы объявлены в корневом пространстве имен `xyz`. В конфигурации приложения можно использовать следующий код:
+Если библиотека не поставляется с автозагрузчиком классов, но конвенция именования ее классов соответствует [PSR-4](https://www.php-fig.org/psr/psr-4/), для загрузки ее классов можно использовать автозагрузчик Yii. Для этого достаточно для каждого корневого пространства имен, которые используются в ее классах, объявить [корневой псевдоним](concept-aliases.md#defining-aliases). Предположим, что библиотека установлена в директорию `vendor/foo/bar`, а ее классы объявлены в корневом пространстве имен `xyz`. В конфигурации приложения можно использовать следующий код:
 
 ```php
 [
@@ -61,23 +61,27 @@ Yii::$classMap['Class2'] = 'path/to/Class2.php';
 
 Поскольку в Yii реализована масса полезных функций, они могут пригодиться при разработке или расширении сторонних систем, таких как WordPress и Joomla, или приложений, разработанных с помощью других PHP-фреймворков. Например, в сторонней системе можно задействовать класс [[yii\helpers\ArrayHelper]] или использовать функционал [Active Record](db-active-record.md). Для этого обычно нужно сделать две вещи: установить Yii и подключить Yii.
 
-Если сторонняя система использует для управления зависимостями Composer, Yii можно просто установить с помощью следующих команд:
+Если сторонняя система использует для управления зависимостями Composer, Yii можно просто установить с помощью следующей команды:
 
-    composer global require "fxp/composer-asset-plugin:^1.2.0"
-    composer require yiisoft/yii2
-    composer install
+```bash
+composer require yiisoft/yii2
+```
 
-Первая команда устанавливает [composer asset plugin](https://github.com/francoispluchino/composer-asset-plugin/), который позволяет управлять зависимостями пакетов bower и npm через Composer. Даже если вы хотите воспользоваться слоем абстракции баз данных или другими элементами Yii, не связанными с ресурсами, этот плагин все равно придется установить, так как без него не установится пакет Yii.
+Если вам интересны возможности Yii, например, по работе с базами данных, но вы не планируете использование
+[ресурсов](structure-assets.md), вы можете установить специальный пакет, который предотвращает загрузку Bower и NPM
+пакетов. Смотрите [cebe/assetfree-yii2](https://github.com/cebe/assetfree-yii2) для деталей.
+
+Первая команда устанавливает [composer asset plugin](https://github.com/fxpio/composer-asset-plugin), который позволяет управлять зависимостями пакетов bower и npm через Composer. Даже если вы хотите воспользоваться слоем абстракции баз данных или другими элементами Yii, не связанными с ресурсами, этот плагин все равно придется установить, так как без него не установится пакет Yii.
 В разделе [об установке Yii](start-installation.md#installing-via-composer) более подробно описана работа с Composer и даны решения проблем, которые могут возникнуть при установке.
 
-Также можно [скачать](http://www.yiiframework.com/download/) файл релиза Yii и распаковать его в директорию `BasePath/vendor`.
+Также можно [скачать](https://www.yiiframework.com/download/) файл релиза Yii и распаковать его в директорию `BasePath/vendor`.
 
 Далее следует изменить входной скрипт сторонней системы, поместив в его начало следующий код:
 
 ```php
-require(__DIR__ . '/../vendor/yiisoft/yii2/Yii.php');
+require __DIR__ . '/../vendor/yiisoft/yii2/Yii.php';
 
-$yiiConfig = require(__DIR__ . '/../config/yii/web.php');
+$yiiConfig = require __DIR__ . '/../config/yii/web.php';
 new yii\web\Application($yiiConfig); // НЕ ВЫЗЫВАЙТЕ run() в этом месте
 ```
 
@@ -102,14 +106,14 @@ new yii\web\Application($yiiConfig); // НЕ ВЫЗЫВАЙТЕ run() в это�
 
 ```php
 // подключение модифицированного класса Yii, описанного ниже
-require(__DIR__ . '/../components/Yii.php');
+require __DIR__ . '/../components/Yii.php';
 
 // настройка приложения Yii 2
-$yii2Config = require(__DIR__ . '/../config/yii2/web.php');
+$yii2Config = require __DIR__ . '/../config/yii2/web.php';
 new yii\web\Application($yii2Config); // НЕ ВЫЗЫВАЙТЕ run()
 
 // настройка приложения Yii 1
-$yii1Config = require(__DIR__ . '/../config/yii1/main.php');
+$yii1Config = require __DIR__ . '/../config/yii1/main.php';
 Yii::createWebApplication($yii1Config)->run();
 ```
 
@@ -118,10 +122,10 @@ Yii::createWebApplication($yii1Config)->run();
 
 ```php
 $yii2path = '/path/to/yii2';
-require($yii2path . '/BaseYii.php'); // Yii 2.x
+require $yii2path . '/BaseYii.php'; // Yii 2.x
 
 $yii1path = '/path/to/yii1';
-require($yii1path . '/YiiBase.php'); // Yii 1.x
+require $yii1path . '/YiiBase.php'; // Yii 1.x
 
 class Yii extends \yii\BaseYii
 {

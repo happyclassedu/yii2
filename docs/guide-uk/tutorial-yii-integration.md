@@ -26,10 +26,10 @@
 
 ```php
 // встановлення автозавантажувача Composer
-require(__DIR__ . '/../vendor/autoload.php');
+require __DIR__ . '/../vendor/autoload.php';
 
 // підключення файлу класа Yii
-require(__DIR__ . '/../vendor/yiisoft/yii2/Yii.php');
+require __DIR__ . '/../vendor/yiisoft/yii2/Yii.php';
 ```
 
 ### Використовуйте завантажені бібліотеки <span id="using-downloaded-libs"></span>
@@ -43,7 +43,7 @@ require(__DIR__ . '/../vendor/yiisoft/yii2/Yii.php');
 як буде підключено файл `Yii.php`, щоб автозавантажувач Yii мав приорітет при автоматичному завантаженні класів.
 
 Якщо бібліотека не надає автозавантажувача класів, але іменування її класів відповідає
-[PSR-4](http://www.php-fig.org/psr/psr-4/) - ви можете використовувати автозавантажувач Yii для завантаження її класів. 
+[PSR-4](https://www.php-fig.org/psr/psr-4/) - ви можете використовувати автозавантажувач Yii для завантаження її класів. 
 Все, що вам потрібно зробити, це тільки оголосити [системний псевдонім](concept-aliases.md#defining-aliases) 
 для кожного кореневого простору імен, що використовується в цих класах. Для прикаду, припустимо, що ви хочете встановити 
 бібліотеку в каталог `vendor/foo/bar`, і класи бібліотеки знаходяться в кориневому просторі імен `xyz`.
@@ -84,12 +84,12 @@ Yii::$classMap['Class2'] = 'path/to/Class2.php';
 Якщо стороння система використовує управління залежностями Composer, ви можете встановити Yii за допомогою наступних команд:
 
 ```bash
-    composer global require "fxp/composer-asset-plugin:^1.2.0"
+    composer global require "fxp/composer-asset-plugin:^1.4.1"
     composer require yiisoft/yii2
     composer install
 ```
 
-Перша команда встановлює [composer asset plugin](https://github.com/francoispluchino/composer-asset-plugin/),
+Перша команда встановлює [composer asset plugin](https://github.com/fxpio/composer-asset-plugin),
 який дозволяє керувати залежностями пакунків Bower і NPM через Composer. Навіть якщо ви захочете використовувати тільки
 прошарки бази даних або інші, не повʼязані ресурсами, можливості Yii, вам все-одно необхідно встановити даний пакунок composer.
 
@@ -111,15 +111,15 @@ Yii::$classMap['Class2'] = 'path/to/Class2.php';
 Дивіться також загальний [розділ про встановлення Yii](start-installation.md#installing-via-composer), для отримання додаткової
 інформації про Composer та проблеми, які можуть виникнути під час встановлення.
 
-В іншому випадку, ви можете [завантажити](http://www.yiiframework.com/download/) файли релізу Yii і розархівувати його
+В іншому випадку, ви можете [завантажити](https://www.yiiframework.com/download/) файли релізу Yii і розархівувати його
 в каталог `BasePath/vendor`.
 
 Далі вам необхідно змінити вхідний скрипт сторонньої системи помістивши на його початок наступний код:
 
 ```php
-require(__DIR__ . '/../vendor/yiisoft/yii2/Yii.php');
+require __DIR__ . '/../vendor/yiisoft/yii2/Yii.php';
 
-$yiiConfig = require(__DIR__ . '/../config/yii/web.php');
+$yiiConfig = require __DIR__ . '/../config/yii/web.php';
 new yii\web\Application($yiiConfig); // НЕ ВИКЛИКАЙТЕ run() в цьому місці
 ```
 
@@ -152,14 +152,14 @@ new yii\web\Application($yiiConfig); // НЕ ВИКЛИКАЙТЕ run() в ць�
 
 ```php
 // підключення модифікованого класу Yii, описаного нижче
-require(__DIR__ . '/../components/Yii.php');
+require __DIR__ . '/../components/Yii.php';
 
 // налаштування додатку Yii 2
-$yii2Config = require(__DIR__ . '/../config/yii2/web.php');
+$yii2Config = require __DIR__ . '/../config/yii2/web.php';
 new yii\web\Application($yii2Config); // не викликайте run()
 
 // налаштування додатку Yii 1
-$yii1Config = require(__DIR__ . '/../config/yii1/main.php');
+$yii1Config = require __DIR__ . '/../config/yii1/main.php';
 Yii::createWebApplication($yii1Config)->run();
 ```
 
@@ -168,10 +168,10 @@ Yii::createWebApplication($yii1Config)->run();
 
 ```php
 $yii2path = '/path/to/yii2';
-require($yii2path . '/BaseYii.php'); // Yii 2.x
+require $yii2path . '/BaseYii.php'; // Yii 2.x
 
 $yii1path = '/path/to/yii1';
-require($yii1path . '/YiiBase.php'); // Yii 1.x
+require $yii1path . '/YiiBase.php'; // Yii 1.x
 
 class Yii extends \yii\BaseYii
 {

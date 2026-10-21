@@ -1,29 +1,57 @@
 <?php
+
 /**
- * @link http://www.yiiframework.com/
+ * @link https://www.yiiframework.com/
  * @copyright Copyright (c) 2008 Yii Software LLC
- * @license http://www.yiiframework.com/license/
+ * @license https://www.yiiframework.com/license/
  */
 
 namespace yii\db\mysql;
 
+use Yii;
+use yii\base\InvalidConfigException;
+use yii\base\NotSupportedException;
+use yii\db\CheckConstraint;
+use yii\db\Constraint;
+use yii\db\ConstraintFinderInterface;
+use yii\db\ConstraintFinderTrait;
+use yii\db\Exception;
 use yii\db\Expression;
+use yii\db\ForeignKeyConstraint;
+use yii\db\IndexConstraint;
 use yii\db\TableSchema;
-use yii\db\ColumnSchema;
+use yii\helpers\ArrayHelper;
+use yii\db\Schema as BaseSchema;
 
 /**
  * Schema is the class for retrieving metadata from a MySQL database (version 4.1.x and 5.x).
  *
  * @author Qiang Xue <qiang.xue@gmail.com>
  * @since 2.0
+ *
+ * @template T of ColumnSchema = ColumnSchema
+ * @extends BaseSchema<T, QueryBuilder>
  */
-class Schema extends \yii\db\Schema
+class Schema extends BaseSchema implements ConstraintFinderInterface
 {
+    use ConstraintFinderTrait;
+
+    /**
+     * {@inheritdoc}
+     */
+    public $columnSchemaClass = 'yii\db\mysql\ColumnSchema';
+    /**
+     * @var bool whether MySQL used is older than 5.1.
+     */
+    private $_oldMysql;
+
     /**
      * @var array mapping from physical column types (keys) to abstract column types (values)
      */
     public $typeMap = [
-        'tinyint' => self::TYPE_SMALLINT,
+        'tinyint' => self::TYPE_TINYINT,
+        'bool' => self::TYPE_TINYINT,
+        'boolean' => self::TYPE_TINYINT,
         'bit' => self::TYPE_INTEGER,
         'smallint' => self::TYPE_SMALLINT,
         'mediumint' => self::TYPE_INTEGER,
@@ -32,9 +60,12 @@ class Schema extends \yii\db\Schema
         'bigint' => self::TYPE_BIGINT,
         'float' => self::TYPE_FLOAT,
         'double' => self::TYPE_DOUBLE,
+        'double precision' => self::TYPE_DOUBLE,
         'real' => self::TYPE_FLOAT,
         'decimal' => self::TYPE_DECIMAL,
         'numeric' => self::TYPE_DECIMAL,
+        'dec' => self::TYPE_DECIMAL,
+        'fixed' => self::TYPE_DECIMAL,
         'tinytext' => self::TYPE_TEXT,
         'mediumtext' => self::TYPE_TEXT,
         'longtext' => self::TYPE_TEXT,
@@ -50,30 +81,179 @@ class Schema extends \yii\db\Schema
         'time' => self::TYPE_TIME,
         'timestamp' => self::TYPE_TIMESTAMP,
         'enum' => self::TYPE_STRING,
+        'set' => self::TYPE_STRING,
+        'binary' => self::TYPE_BINARY,
         'varbinary' => self::TYPE_BINARY,
+        'json' => self::TYPE_JSON,
     ];
 
+    /**
+     * {@inheritdoc}
+     */
+    protected $tableQuoteCharacter = '`';
+    /**
+     * {@inheritdoc}
+     */
+    protected $columnQuoteCharacter = '`';
 
     /**
-     * Quotes a table name for use in a query.
-     * A simple table name has no schema prefix.
-     * @param string $name table name
-     * @return string the properly quoted table name
+     * {@inheritdoc}
      */
-    public function quoteSimpleTableName($name)
+    protected function resolveTableName($name)
     {
-        return strpos($name, '`') !== false ? $name : "`$name`";
+        $resolvedName = new TableSchema();
+        $parts = explode('.', str_replace('`', '', $name));
+        if (isset($parts[1])) {
+            $resolvedName->schemaName = $parts[0];
+            $resolvedName->name = $parts[1];
+        } else {
+            $resolvedName->schemaName = $this->defaultSchema;
+            $resolvedName->name = $name;
+        }
+        $resolvedName->fullName = ($resolvedName->schemaName !== $this->defaultSchema ? $resolvedName->schemaName . '.' : '') . $resolvedName->name;
+        return $resolvedName;
     }
 
     /**
-     * Quotes a column name for use in a query.
-     * A simple column name has no prefix.
-     * @param string $name column name
-     * @return string the properly quoted column name
+     * {@inheritdoc}
      */
-    public function quoteSimpleColumnName($name)
+    protected function findTableNames($schema = '')
     {
-        return strpos($name, '`') !== false || $name === '*' ? $name : "`$name`";
+        $sql = 'SHOW TABLES';
+        if ($schema !== '') {
+            $sql .= ' FROM ' . $this->quoteSimpleTableName($schema);
+        }
+
+        return $this->db->createCommand($sql)->queryColumn();
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    protected function loadTableSchema($name)
+    {
+        $table = new TableSchema();
+        $this->resolveTableNames($table, $name);
+
+        if ($this->findColumns($table)) {
+            $this->findConstraints($table);
+            return $table;
+        }
+
+        return null;
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    protected function loadTablePrimaryKey($tableName)
+    {
+        return $this->loadTableConstraints($tableName, 'primaryKey');
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    protected function loadTableForeignKeys($tableName)
+    {
+        return $this->loadTableConstraints($tableName, 'foreignKeys');
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    protected function loadTableIndexes($tableName)
+    {
+        static $sql = <<<'SQL'
+SELECT
+    `s`.`INDEX_NAME` AS `name`,
+    `s`.`COLUMN_NAME` AS `column_name`,
+    `s`.`NON_UNIQUE` ^ 1 AS `index_is_unique`,
+    `s`.`INDEX_NAME` = 'PRIMARY' AS `index_is_primary`
+FROM `information_schema`.`STATISTICS` AS `s`
+WHERE `s`.`TABLE_SCHEMA` = COALESCE(:schemaName, DATABASE()) AND `s`.`INDEX_SCHEMA` = `s`.`TABLE_SCHEMA` AND `s`.`TABLE_NAME` = :tableName
+ORDER BY `s`.`SEQ_IN_INDEX` ASC
+SQL;
+
+        $resolvedName = $this->resolveTableName($tableName);
+        $indexes = $this->db->createCommand($sql, [
+            ':schemaName' => $resolvedName->schemaName,
+            ':tableName' => $resolvedName->name,
+        ])->queryAll();
+        $indexes = $this->normalizePdoRowKeyCase($indexes, true);
+        $indexes = ArrayHelper::index($indexes, null, 'name');
+        $result = [];
+        foreach ($indexes as $name => $index) {
+            $result[] = new IndexConstraint([
+                'isPrimary' => (bool) $index[0]['index_is_primary'],
+                'isUnique' => (bool) $index[0]['index_is_unique'],
+                'name' => $name !== 'PRIMARY' ? $name : null,
+                'columnNames' => ArrayHelper::getColumn($index, 'column_name'),
+            ]);
+        }
+
+        return $result;
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    protected function loadTableUniques($tableName)
+    {
+        return $this->loadTableConstraints($tableName, 'uniques');
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    protected function loadTableChecks($tableName)
+    {
+        $version = $this->db->getServerVersion();
+
+        // check version MySQL >= 8.0.16
+        if (\stripos($version, 'MariaDb') === false && \version_compare($version, '8.0.16', '<')) {
+            throw new NotSupportedException('MySQL < 8.0.16 does not support check constraints.');
+        }
+
+        $checks = [];
+
+        $sql = <<<SQL
+        SELECT cc.CONSTRAINT_NAME as constraint_name, cc.CHECK_CLAUSE as check_clause
+        FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS tc
+        JOIN INFORMATION_SCHEMA.CHECK_CONSTRAINTS cc
+        ON tc.CONSTRAINT_NAME = cc.CONSTRAINT_NAME
+        WHERE tc.TABLE_NAME = :tableName AND tc.CONSTRAINT_TYPE = 'CHECK';
+        SQL;
+
+        $resolvedName = $this->resolveTableName($tableName);
+        $tableRows = $this->db->createCommand($sql, [':tableName' => $resolvedName->name])->queryAll();
+
+        if ($tableRows === []) {
+            return $checks;
+        }
+
+        $tableRows = $this->normalizePdoRowKeyCase($tableRows, true);
+
+        foreach ($tableRows as $tableRow) {
+            $check = new CheckConstraint(
+                [
+                    'name' => $tableRow['constraint_name'],
+                    'expression' => $tableRow['check_clause'],
+                ]
+            );
+            $checks[] = $check;
+        }
+
+        return $checks;
+    }
+
+    /**
+     * {@inheritdoc}
+     * @throws NotSupportedException if this method is called.
+     */
+    protected function loadTableDefaultValues($tableName)
+    {
+        throw new NotSupportedException('MySQL does not support default value constraints.');
     }
 
     /**
@@ -82,26 +262,7 @@ class Schema extends \yii\db\Schema
      */
     public function createQueryBuilder()
     {
-        return new QueryBuilder($this->db);
-    }
-
-    /**
-     * Loads the metadata for the specified table.
-     * @param string $name table name
-     * @return TableSchema driver dependent table metadata. Null if the table does not exist.
-     */
-    protected function loadTableSchema($name)
-    {
-        $table = new TableSchema;
-        $this->resolveTableNames($table, $name);
-
-        if ($this->findColumns($table)) {
-            $this->findConstraints($table);
-
-            return $table;
-        } else {
-            return null;
-        }
+        return Yii::createObject(QueryBuilder::className(), [$this->db]);
     }
 
     /**
@@ -124,7 +285,7 @@ class Schema extends \yii\db\Schema
     /**
      * Loads the column information into a [[ColumnSchema]] object.
      * @param array $info column information
-     * @return ColumnSchema the column schema object
+     * @return T the column schema object
      */
     protected function loadColumnSchema($info)
     {
@@ -174,10 +335,20 @@ class Schema extends \yii\db\Schema
         $column->phpType = $this->getColumnPhpType($column);
 
         if (!$column->isPrimaryKey) {
-            if ($column->type === 'timestamp' && $info['default'] === 'CURRENT_TIMESTAMP') {
-                $column->defaultValue = new Expression('CURRENT_TIMESTAMP');
+            /**
+             * When displayed in the INFORMATION_SCHEMA.COLUMNS table, a default CURRENT TIMESTAMP is displayed
+             * as CURRENT_TIMESTAMP up until MariaDB 10.2.2, and as current_timestamp() from MariaDB 10.2.3.
+             *
+             * See details here: https://mariadb.com/kb/en/library/now/#description
+             */
+            if (
+                in_array($column->type, ['timestamp', 'datetime', 'date', 'time'])
+                && isset($info['default'])
+                && preg_match('/^current_timestamp(?:\(([0-9]*)\))?$/i', $info['default'], $matches)
+            ) {
+                $column->defaultValue = new Expression('CURRENT_TIMESTAMP' . (!empty($matches[1]) ? '(' . $matches[1] . ')' : ''));
             } elseif (isset($type) && $type === 'bit') {
-                $column->defaultValue = bindec(trim($info['default'], 'b\''));
+                $column->defaultValue = bindec(trim(isset($info['default']) ? $info['default'] : '', 'b\''));
             } else {
                 $column->defaultValue = $column->phpTypecast($info['default']);
             }
@@ -206,10 +377,19 @@ class Schema extends \yii\db\Schema
             }
             throw $e;
         }
+
+
+        $jsonColumns = $this->getJsonColumns($table);
+
         foreach ($columns as $info) {
             if ($this->db->slavePdo->getAttribute(\PDO::ATTR_CASE) !== \PDO::CASE_LOWER) {
                 $info = array_change_key_case($info, CASE_LOWER);
             }
+
+            if (\in_array($info['field'], $jsonColumns, true)) {
+                $info['type'] = static::TYPE_JSON;
+            }
+
             $column = $this->loadColumnSchema($info);
             $table->columns[$column->name] = $column;
             if ($column->isPrimaryKey) {
@@ -248,22 +428,22 @@ class Schema extends \yii\db\Schema
      */
     protected function findConstraints($table)
     {
-        $sql = <<<SQL
+        $sql = <<<'SQL'
 SELECT
-    kcu.constraint_name,
-    kcu.column_name,
-    kcu.referenced_table_name,
-    kcu.referenced_column_name
-FROM information_schema.referential_constraints AS rc
-JOIN information_schema.key_column_usage AS kcu ON
+    `kcu`.`CONSTRAINT_NAME` AS `constraint_name`,
+    `kcu`.`COLUMN_NAME` AS `column_name`,
+    `kcu`.`REFERENCED_TABLE_NAME` AS `referenced_table_name`,
+    `kcu`.`REFERENCED_COLUMN_NAME` AS `referenced_column_name`
+FROM `information_schema`.`REFERENTIAL_CONSTRAINTS` AS `rc`
+JOIN `information_schema`.`KEY_COLUMN_USAGE` AS `kcu` ON
     (
-        kcu.constraint_catalog = rc.constraint_catalog OR
-        (kcu.constraint_catalog IS NULL AND rc.constraint_catalog IS NULL)
+        `kcu`.`CONSTRAINT_CATALOG` = `rc`.`CONSTRAINT_CATALOG` OR
+        (`kcu`.`CONSTRAINT_CATALOG` IS NULL AND `rc`.`CONSTRAINT_CATALOG` IS NULL)
     ) AND
-    kcu.constraint_schema = rc.constraint_schema AND
-    kcu.constraint_name = rc.constraint_name
-WHERE rc.constraint_schema = database() AND kcu.table_schema = database()
-AND rc.table_name = :tableName AND kcu.table_name = :tableName1
+    `kcu`.`CONSTRAINT_SCHEMA` = `rc`.`CONSTRAINT_SCHEMA` AND
+    `kcu`.`CONSTRAINT_NAME` = `rc`.`CONSTRAINT_NAME`
+WHERE `rc`.`CONSTRAINT_SCHEMA` = database() AND `kcu`.`TABLE_SCHEMA` = database()
+AND `rc`.`TABLE_NAME` = :tableName AND `kcu`.`TABLE_NAME` = :tableName1
 SQL;
 
         try {
@@ -293,9 +473,9 @@ SQL;
             $regexp = '/FOREIGN KEY\s+\(([^\)]+)\)\s+REFERENCES\s+([^\(^\s]+)\s*\(([^\)]+)\)/mi';
             if (preg_match_all($regexp, $sql, $matches, PREG_SET_ORDER)) {
                 foreach ($matches as $match) {
-                    $fks = array_map('trim', explode(',', str_replace('`', '', $match[1])));
-                    $pks = array_map('trim', explode(',', str_replace('`', '', $match[3])));
-                    $constraint = [str_replace('`', '', $match[2])];
+                    $fks = array_map('trim', explode(',', str_replace(['`', '"'], '', $match[1])));
+                    $pks = array_map('trim', explode(',', str_replace(['`', '"'], '', $match[3])));
+                    $constraint = [str_replace(['`', '"'], '', $match[2])];
                     foreach ($fks as $k => $name) {
                         $constraint[$name] = $pks[$k];
                     }
@@ -308,9 +488,10 @@ SQL;
 
     /**
      * Returns all unique indexes for the given table.
+     *
      * Each array element is of the following structure:
      *
-     * ```php
+     * ```
      * [
      *     'IndexName1' => ['col1' [, ...]],
      *     'IndexName2' => ['col2' [, ...]],
@@ -325,11 +506,11 @@ SQL;
         $sql = $this->getCreateTableSql($table);
         $uniqueIndexes = [];
 
-        $regexp = '/UNIQUE KEY\s+([^\(\s]+)\s*\(([^\(\)]+)\)/mi';
+        $regexp = '/UNIQUE KEY\s+[`"](.+)[`"]\s*\(([`"].+[`"])+\)/mi';
         if (preg_match_all($regexp, $sql, $matches, PREG_SET_ORDER)) {
             foreach ($matches as $match) {
-                $indexName = str_replace('`', '', $match[1]);
-                $indexColumns = array_map('trim', explode(',', str_replace('`', '', $match[2])));
+                $indexName = $match[1];
+                $indexColumns = array_map('trim', preg_split('/[`"],[`"]/', trim($match[2], '`"')));
                 $uniqueIndexes[$indexName] = $indexColumns;
             }
         }
@@ -338,25 +519,148 @@ SQL;
     }
 
     /**
-     * Returns all table names in the database.
-     * @param string $schema the schema of the tables. Defaults to empty string, meaning the current or default schema.
-     * @return array all table names in the database. The names have NO schema name prefix.
-     */
-    protected function findTableNames($schema = '')
-    {
-        $sql = 'SHOW TABLES';
-        if ($schema !== '') {
-            $sql .= ' FROM ' . $this->quoteSimpleTableName($schema);
-        }
-
-        return $this->db->createCommand($sql)->queryColumn();
-    }
-
-    /**
-     * @inheritdoc
+     * {@inheritdoc}
      */
     public function createColumnSchemaBuilder($type, $length = null)
     {
-        return new ColumnSchemaBuilder($type, $length, $this->db);
+        return Yii::createObject(ColumnSchemaBuilder::className(), [$type, $length, $this->db]);
+    }
+
+    /**
+     * @return bool whether the version of the MySQL being used is older than 5.1.
+     * @throws InvalidConfigException
+     * @throws Exception
+     * @since 2.0.13
+     */
+    protected function isOldMysql()
+    {
+        if ($this->_oldMysql === null) {
+            $version = $this->db->getSlavePdo(true)->getAttribute(\PDO::ATTR_SERVER_VERSION);
+            $this->_oldMysql = version_compare($version, '5.1', '<=');
+        }
+
+        return $this->_oldMysql;
+    }
+
+    /**
+     * Loads multiple types of constraints and returns the specified ones.
+     * @param string $tableName table name.
+     * @param string $returnType return type:
+     * - primaryKey
+     * - foreignKeys
+     * - uniques
+     * @return mixed constraints.
+     */
+    private function loadTableConstraints($tableName, $returnType)
+    {
+        static $sql = <<<'SQL'
+SELECT
+    `kcu`.`CONSTRAINT_NAME` AS `name`,
+    `kcu`.`COLUMN_NAME` AS `column_name`,
+    `tc`.`CONSTRAINT_TYPE` AS `type`,
+    CASE
+        WHEN :schemaName IS NULL AND `kcu`.`REFERENCED_TABLE_SCHEMA` = DATABASE() THEN NULL
+        ELSE `kcu`.`REFERENCED_TABLE_SCHEMA`
+    END AS `foreign_table_schema`,
+    `kcu`.`REFERENCED_TABLE_NAME` AS `foreign_table_name`,
+    `kcu`.`REFERENCED_COLUMN_NAME` AS `foreign_column_name`,
+    `rc`.`UPDATE_RULE` AS `on_update`,
+    `rc`.`DELETE_RULE` AS `on_delete`,
+    `kcu`.`ORDINAL_POSITION` AS `position`
+FROM
+    `information_schema`.`KEY_COLUMN_USAGE` AS `kcu`,
+    `information_schema`.`REFERENTIAL_CONSTRAINTS` AS `rc`,
+    `information_schema`.`TABLE_CONSTRAINTS` AS `tc`
+WHERE
+    `kcu`.`TABLE_SCHEMA` = COALESCE(:schemaName1, DATABASE()) AND `kcu`.`CONSTRAINT_SCHEMA` = `kcu`.`TABLE_SCHEMA` AND `kcu`.`TABLE_NAME` = :tableName
+    AND `rc`.`CONSTRAINT_SCHEMA` = `kcu`.`TABLE_SCHEMA` AND `rc`.`TABLE_NAME` = :tableName1 AND `rc`.`CONSTRAINT_NAME` = `kcu`.`CONSTRAINT_NAME`
+    AND `tc`.`TABLE_SCHEMA` = `kcu`.`TABLE_SCHEMA` AND `tc`.`TABLE_NAME` = :tableName2 AND `tc`.`CONSTRAINT_NAME` = `kcu`.`CONSTRAINT_NAME` AND `tc`.`CONSTRAINT_TYPE` = 'FOREIGN KEY'
+UNION
+SELECT
+    `kcu`.`CONSTRAINT_NAME` AS `name`,
+    `kcu`.`COLUMN_NAME` AS `column_name`,
+    `tc`.`CONSTRAINT_TYPE` AS `type`,
+    NULL AS `foreign_table_schema`,
+    NULL AS `foreign_table_name`,
+    NULL AS `foreign_column_name`,
+    NULL AS `on_update`,
+    NULL AS `on_delete`,
+    `kcu`.`ORDINAL_POSITION` AS `position`
+FROM
+    `information_schema`.`KEY_COLUMN_USAGE` AS `kcu`,
+    `information_schema`.`TABLE_CONSTRAINTS` AS `tc`
+WHERE
+    `kcu`.`TABLE_SCHEMA` = COALESCE(:schemaName2, DATABASE()) AND `kcu`.`TABLE_NAME` = :tableName3
+    AND `tc`.`TABLE_SCHEMA` = `kcu`.`TABLE_SCHEMA` AND `tc`.`TABLE_NAME` = :tableName4 AND `tc`.`CONSTRAINT_NAME` = `kcu`.`CONSTRAINT_NAME` AND `tc`.`CONSTRAINT_TYPE` IN ('PRIMARY KEY', 'UNIQUE')
+ORDER BY `position` ASC
+SQL;
+
+        $resolvedName = $this->resolveTableName($tableName);
+        $constraints = $this->db->createCommand($sql, [
+            ':schemaName' => $resolvedName->schemaName,
+            ':schemaName1' => $resolvedName->schemaName,
+            ':schemaName2' => $resolvedName->schemaName,
+            ':tableName' => $resolvedName->name,
+            ':tableName1' => $resolvedName->name,
+            ':tableName2' => $resolvedName->name,
+            ':tableName3' => $resolvedName->name,
+            ':tableName4' => $resolvedName->name
+        ])->queryAll();
+        $constraints = $this->normalizePdoRowKeyCase($constraints, true);
+        $constraints = ArrayHelper::index($constraints, null, ['type', 'name']);
+        $result = [
+            'primaryKey' => null,
+            'foreignKeys' => [],
+            'uniques' => [],
+        ];
+        foreach ($constraints as $type => $names) {
+            foreach ($names as $name => $constraint) {
+                switch ($type) {
+                    case 'PRIMARY KEY':
+                        $result['primaryKey'] = new Constraint([
+                            'columnNames' => ArrayHelper::getColumn($constraint, 'column_name'),
+                        ]);
+                        break;
+                    case 'FOREIGN KEY':
+                        $result['foreignKeys'][] = new ForeignKeyConstraint([
+                            'name' => $name,
+                            'columnNames' => ArrayHelper::getColumn($constraint, 'column_name'),
+                            'foreignSchemaName' => $constraint[0]['foreign_table_schema'],
+                            'foreignTableName' => $constraint[0]['foreign_table_name'],
+                            'foreignColumnNames' => ArrayHelper::getColumn($constraint, 'foreign_column_name'),
+                            'onDelete' => $constraint[0]['on_delete'],
+                            'onUpdate' => $constraint[0]['on_update'],
+                        ]);
+                        break;
+                    case 'UNIQUE':
+                        $result['uniques'][] = new Constraint([
+                            'name' => $name,
+                            'columnNames' => ArrayHelper::getColumn($constraint, 'column_name'),
+                        ]);
+                        break;
+                }
+            }
+        }
+        foreach ($result as $type => $data) {
+            $this->setTableMetadata($tableName, $type, $data);
+        }
+
+        return $result[$returnType];
+    }
+
+    private function getJsonColumns(TableSchema $table): array
+    {
+        $sql = $this->getCreateTableSql($table);
+        $result = [];
+
+        $regexp = '/json_valid\([\`"](.+)[\`"]\s*\)/mi';
+
+        if (\preg_match_all($regexp, $sql, $matches, PREG_SET_ORDER)) {
+            foreach ($matches as $match) {
+                $result[] = $match[1];
+            }
+        }
+
+        return $result;
     }
 }

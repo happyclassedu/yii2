@@ -33,7 +33,7 @@ The following core helper classes are provided in the Yii releases:
 - HtmlPurifier
 - Imagine (provided by yii2-imagine extension)
 - Inflector
-- Json
+- [Json](helper-json.md)
 - Markdown
 - StringHelper
 - [Url](helper-url.md)
@@ -76,5 +76,5 @@ Yii::$classMap['yii\helpers\ArrayHelper'] = '@app/components/ArrayHelper.php';
 ```
 
 Note that customizing of helper classes is only useful if you want to change the behavior of an existing function
-of the helpers. If you want to add additional functions to use in your application you may better create a separate
+of the helpers. If you want to add additional functions to use in your application, you may be better off creating a separate
 helper for that.

@@ -1,13 +1,16 @@
 <?php
+
 /**
- * @link http://www.yiiframework.com/
+ * @link https://www.yiiframework.com/
  * @copyright Copyright (c) 2008 Yii Software LLC
- * @license http://www.yiiframework.com/license/
+ * @license https://www.yiiframework.com/license/
  */
 
 namespace yii\helpers;
 
+use Yii;
 use yii\console\Markdown as ConsoleMarkdown;
+use yii\base\Model;
 
 /**
  * BaseConsole provides concrete implementation for [[Console]].
@@ -20,38 +23,36 @@ use yii\console\Markdown as ConsoleMarkdown;
 class BaseConsole
 {
     // foreground color control codes
-    const FG_BLACK  = 30;
-    const FG_RED    = 31;
-    const FG_GREEN  = 32;
-    const FG_YELLOW = 33;
-    const FG_BLUE   = 34;
-    const FG_PURPLE = 35;
-    const FG_CYAN   = 36;
-    const FG_GREY   = 37;
+    public const FG_BLACK = 30;
+    public const FG_RED = 31;
+    public const FG_GREEN = 32;
+    public const FG_YELLOW = 33;
+    public const FG_BLUE = 34;
+    public const FG_PURPLE = 35;
+    public const FG_CYAN = 36;
+    public const FG_GREY = 37;
     // background color control codes
-    const BG_BLACK  = 40;
-    const BG_RED    = 41;
-    const BG_GREEN  = 42;
-    const BG_YELLOW = 43;
-    const BG_BLUE   = 44;
-    const BG_PURPLE = 45;
-    const BG_CYAN   = 46;
-    const BG_GREY   = 47;
+    public const BG_BLACK = 40;
+    public const BG_RED = 41;
+    public const BG_GREEN = 42;
+    public const BG_YELLOW = 43;
+    public const BG_BLUE = 44;
+    public const BG_PURPLE = 45;
+    public const BG_CYAN = 46;
+    public const BG_GREY = 47;
     // fonts style control codes
-    const RESET       = 0;
-    const NORMAL      = 0;
-    const BOLD        = 1;
-    const ITALIC      = 3;
-    const UNDERLINE   = 4;
-    const BLINK       = 5;
-    const NEGATIVE    = 7;
-    const CONCEALED   = 8;
-    const CROSSED_OUT = 9;
-    const FRAMED      = 51;
-    const ENCIRCLED   = 52;
-    const OVERLINED   = 53;
-
-
+    public const RESET = 0;
+    public const NORMAL = 0;
+    public const BOLD = 1;
+    public const ITALIC = 3;
+    public const UNDERLINE = 4;
+    public const BLINK = 5;
+    public const NEGATIVE = 7;
+    public const CONCEALED = 8;
+    public const CROSSED_OUT = 9;
+    public const FRAMED = 51;
+    public const ENCIRCLED = 52;
+    public const OVERLINED = 53;
     /**
      * Moves the terminal cursor up by sending ANSI control code CUU to the terminal.
      * If the cursor is already at the edge of the screen, this has no effect.
@@ -264,9 +265,9 @@ class BaseConsole
     /**
      * Resets any ANSI format set by previous method [[beginAnsiFormat()]]
      * Any output after this will have default text format.
-     * This is equal to calling
+     * This is equal to calling.
      *
-     * ```php
+     * ```
      * echo Console::ansiFormatCode([Console::RESET])
      * ```
      */
@@ -276,7 +277,7 @@ class BaseConsole
     }
 
     /**
-     * Will return a string formatted with the given ANSI style
+     * Will return a string formatted with the given ANSI style.
      *
      * @param string $string the string to be formatted
      * @param array $format An array containing formatting values.
@@ -293,12 +294,13 @@ class BaseConsole
 
     /**
      * Returns the ansi format code for xterm foreground color.
+     *
      * You can pass the return value of this to one of the formatting methods:
-     * [[ansiFormat]], [[ansiFormatCode]], [[beginAnsiFormat]]
+     * [[ansiFormat]], [[ansiFormatCode]], [[beginAnsiFormat]].
      *
      * @param int $colorCode xterm color code
      * @return string
-     * @see http://en.wikipedia.org/wiki/Talk:ANSI_escape_code#xterm-256colors
+     * @see https://en.wikipedia.org/wiki/Talk:ANSI_escape_code#xterm-256colors
      */
     public static function xtermFgColor($colorCode)
     {
@@ -307,12 +309,13 @@ class BaseConsole
 
     /**
      * Returns the ansi format code for xterm background color.
+     *
      * You can pass the return value of this to one of the formatting methods:
-     * [[ansiFormat]], [[ansiFormatCode]], [[beginAnsiFormat]]
+     * [[ansiFormat]], [[ansiFormatCode]], [[beginAnsiFormat]].
      *
      * @param int $colorCode xterm color code
      * @return string
-     * @see http://en.wikipedia.org/wiki/Talk:ANSI_escape_code#xterm-256colors
+     * @see https://en.wikipedia.org/wiki/Talk:ANSI_escape_code#xterm-256colors
      */
     public static function xtermBgColor($colorCode)
     {
@@ -320,14 +323,14 @@ class BaseConsole
     }
 
     /**
-     * Strips ANSI control codes from a string
+     * Strips ANSI control codes from a string.
      *
      * @param string $string String to strip
      * @return string
      */
     public static function stripAnsiFormat($string)
     {
-        return preg_replace('/\033\[[\d;?]*\w/', '', $string);
+        return preg_replace(self::ansiCodesPattern(), '', (string)$string);
     }
 
     /**
@@ -341,7 +344,79 @@ class BaseConsole
     }
 
     /**
-     * Converts an ANSI formatted string to HTML
+     * Returns the width of the string without ANSI color codes.
+     * @param string $string the string to measure
+     * @return int the width of the string not counting ANSI format characters
+     * @since 2.0.36
+     */
+    public static function ansiStrwidth($string)
+    {
+        return mb_strwidth(static::stripAnsiFormat($string), Yii::$app->charset);
+    }
+
+    /**
+     * Returns the portion with ANSI color codes of string specified by the start and length parameters.
+     * If string has color codes, then will be return "TEXT_COLOR + TEXT_STRING + DEFAULT_COLOR",
+     * else will be simple "TEXT_STRING".
+     * @param string $string
+     * @param int $start
+     * @param int $length
+     * @return string
+     */
+    public static function ansiColorizedSubstr($string, $start, $length)
+    {
+        if ($start < 0 || $length <= 0) {
+            return '';
+        }
+
+        $textItems = preg_split(self::ansiCodesPattern(), (string)$string);
+
+        preg_match_all(self::ansiCodesPattern(), (string)$string, $colors);
+        $colors = count($colors) ? $colors[0] : [];
+        array_unshift($colors, '');
+
+        $result = '';
+        $curPos = 0;
+        $inRange = false;
+
+        foreach ($textItems as $k => $textItem) {
+            $color = $colors[$k];
+
+            if ($curPos <= $start && $start < $curPos + Console::ansiStrwidth($textItem)) {
+                $text = mb_substr($textItem, $start - $curPos, null, Yii::$app->charset);
+                $inRange = true;
+            } else {
+                $text = $textItem;
+            }
+
+            if ($inRange) {
+                $result .= $color . $text;
+                $diff = $length - Console::ansiStrwidth($result);
+                if ($diff <= 0) {
+                    if ($diff < 0) {
+                        $result = mb_substr($result, 0, $diff, Yii::$app->charset);
+                    }
+                    $defaultColor = static::renderColoredString('%n');
+                    if ($color && $color != $defaultColor) {
+                        $result .= $defaultColor;
+                    }
+                    break;
+                }
+            }
+
+            $curPos += mb_strlen($textItem, Yii::$app->charset);
+        }
+
+        return $result;
+    }
+
+    private static function ansiCodesPattern()
+    {
+        return /** @lang PhpRegExp */ '/\033\[[\d;?]*\w/';
+    }
+
+    /**
+     * Converts an ANSI formatted string to HTML.
      *
      * Note: xTerm 256 bit colors are currently not supported.
      *
@@ -356,32 +431,32 @@ class BaseConsole
     public static function ansiToHtml($string, $styleMap = [])
     {
         $styleMap = [
-            // http://www.w3.org/TR/CSS2/syndata.html#value-def-color
-            self::FG_BLACK =>    ['color' => 'black'],
-            self::FG_BLUE =>     ['color' => 'blue'],
-            self::FG_CYAN =>     ['color' => 'aqua'],
-            self::FG_GREEN =>    ['color' => 'lime'],
-            self::FG_GREY =>     ['color' => 'silver'],
-            // http://meyerweb.com/eric/thoughts/2014/06/19/rebeccapurple/
-            // http://dev.w3.org/csswg/css-color/#valuedef-rebeccapurple
-            self::FG_PURPLE =>   ['color' => 'rebeccapurple'],
-            self::FG_RED =>      ['color' => 'red'],
-            self::FG_YELLOW =>   ['color' => 'yellow'],
-            self::BG_BLACK =>    ['background-color' => 'black'],
-            self::BG_BLUE =>     ['background-color' => 'blue'],
-            self::BG_CYAN =>     ['background-color' => 'aqua'],
-            self::BG_GREEN =>    ['background-color' => 'lime'],
-            self::BG_GREY =>     ['background-color' => 'silver'],
-            self::BG_PURPLE =>   ['background-color' => 'rebeccapurple'],
-            self::BG_RED =>      ['background-color' => 'red'],
-            self::BG_YELLOW =>   ['background-color' => 'yellow'],
-            self::BOLD =>        ['font-weight' => 'bold'],
-            self::ITALIC =>      ['font-style' => 'italic'],
-            self::UNDERLINE =>   ['text-decoration' => ['underline']],
-            self::OVERLINED =>   ['text-decoration' => ['overline']],
+            // https://www.w3.org/TR/CSS2/syndata.html#value-def-color
+            self::FG_BLACK => ['color' => 'black'],
+            self::FG_BLUE => ['color' => 'blue'],
+            self::FG_CYAN => ['color' => 'aqua'],
+            self::FG_GREEN => ['color' => 'lime'],
+            self::FG_GREY => ['color' => 'silver'],
+            // https://meyerweb.com/eric/thoughts/2014/06/19/rebeccapurple/
+            // https://drafts.csswg.org/css-color/#valuedef-rebeccapurple
+            self::FG_PURPLE => ['color' => 'rebeccapurple'],
+            self::FG_RED => ['color' => 'red'],
+            self::FG_YELLOW => ['color' => 'yellow'],
+            self::BG_BLACK => ['background-color' => 'black'],
+            self::BG_BLUE => ['background-color' => 'blue'],
+            self::BG_CYAN => ['background-color' => 'aqua'],
+            self::BG_GREEN => ['background-color' => 'lime'],
+            self::BG_GREY => ['background-color' => 'silver'],
+            self::BG_PURPLE => ['background-color' => 'rebeccapurple'],
+            self::BG_RED => ['background-color' => 'red'],
+            self::BG_YELLOW => ['background-color' => 'yellow'],
+            self::BOLD => ['font-weight' => 'bold'],
+            self::ITALIC => ['font-style' => 'italic'],
+            self::UNDERLINE => ['text-decoration' => ['underline']],
+            self::OVERLINED => ['text-decoration' => ['overline']],
             self::CROSSED_OUT => ['text-decoration' => ['line-through']],
-            self::BLINK =>       ['text-decoration' => ['blink']],
-            self::CONCEALED =>   ['visibility' => 'hidden'],
+            self::BLINK => ['text-decoration' => ['blink']],
+            self::CONCEALED => ['visibility' => 'hidden'],
         ] + $styleMap;
 
         $tags = 0;
@@ -450,11 +525,12 @@ class BaseConsole
             $result .= '</span>';
             $tags--;
         }
+
         return $result;
     }
 
     /**
-     * Converts Markdown to be better readable in console environments by applying some ANSI format
+     * Converts Markdown to be better readable in console environments by applying some ANSI format.
      * @param string $markdown the markdown string.
      * @return string the parsed result as ANSI formatted string.
      */
@@ -465,7 +541,7 @@ class BaseConsole
     }
 
     /**
-     * Converts a string to ansi formatted by replacing patterns like %y (for yellow) with ansi control codes
+     * Converts a string to ansi formatted by replacing patterns like %y (for yellow) with ansi control codes.
      *
      * Uses almost the same syntax as https://github.com/pear/Console_Color2/blob/master/Console/Color2.php
      * The conversion table is: ('bold' meaning 'light' on some
@@ -557,11 +633,10 @@ class BaseConsole
 
     /**
      * Escapes % so they don't get interpreted as color codes when
-     * the string is parsed by [[renderColoredString]]
+     * the string is parsed by [[renderColoredString]].
      *
      * @param string $string String to escape
      *
-     * @access public
      * @return string
      */
     public static function escape($string)
@@ -587,7 +662,7 @@ class BaseConsole
     }
 
     /**
-     * Returns true if the console is running on windows
+     * Returns true if the console is running on windows.
      * @return bool
      */
     public static function isRunningOnWindows()
@@ -596,7 +671,13 @@ class BaseConsole
     }
 
     /**
-     * Usage: list($width, $height) = ConsoleHelper::getScreenSize();
+     * Returns terminal screen size.
+     *
+     * Usage:
+     *
+     * ```
+     * list($width, $height) = ConsoleHelper::getScreenSize();
+     * ```
      *
      * @param bool $refresh whether to force checking and not re-use cached size value.
      * This is useful to detect changing window size while the application is running but may
@@ -606,14 +687,23 @@ class BaseConsole
     public static function getScreenSize($refresh = false)
     {
         static $size;
-        if ($size !== null && !$refresh) {
+        static $execDisabled;
+
+        if ($size !== null && ($execDisabled || !$refresh)) {
             return $size;
+        }
+
+        if ($execDisabled === null) {
+            $execDisabled = !function_exists('ini_get') || preg_match('/(\bexec\b)/i', ini_get('disable_functions'));
+            if ($execDisabled) {
+                return $size = false;
+            }
         }
 
         if (static::isRunningOnWindows()) {
             $output = [];
             exec('mode con', $output);
-            if (isset($output, $output[1]) && strpos($output[1], 'CON') !== false) {
+            if (isset($output[1]) && strpos($output[1], 'CON') !== false) {
                 return $size = [(int) preg_replace('~\D~', '', $output[4]), (int) preg_replace('~\D~', '', $output[3])];
             }
         } else {
@@ -624,12 +714,12 @@ class BaseConsole
 
                 // Linux stty output
                 if (preg_match('/rows\s+(\d+);\s*columns\s+(\d+);/mi', $stty, $matches)) {
-                    return $size = [(int)$matches[2], (int)$matches[1]];
+                    return $size = [(int) $matches[2], (int) $matches[1]];
                 }
 
                 // MacOS stty output
                 if (preg_match('/(\d+)\s+rows;\s*(\d+)\s+columns;/mi', $stty, $matches)) {
-                    return $size = [(int)$matches[2], (int)$matches[1]];
+                    return $size = [(int) $matches[2], (int) $matches[1]];
                 }
             }
 
@@ -648,7 +738,7 @@ class BaseConsole
     }
 
     /**
-     * Word wrap text with indentation to fit the screen size
+     * Word wrap text with indentation to fit the screen size.
      *
      * If screen size could not be detected, or the indentation is greater than the screen size, the text will not be wrapped.
      *
@@ -675,7 +765,7 @@ class BaseConsole
             return $text;
         }
         $pad = str_repeat(' ', $indent);
-        $lines = explode("\n", wordwrap($text, $size[0] - $indent, "\n", true));
+        $lines = explode("\n", wordwrap($text, $size[0] - $indent, "\n"));
         $first = true;
         foreach ($lines as $i => $line) {
             if ($first) {
@@ -684,6 +774,7 @@ class BaseConsole
             }
             $lines[$i] = $pad . $line;
         }
+
         return implode("\n", $lines);
     }
 
@@ -724,7 +815,7 @@ class BaseConsole
      * Asks the user for input. Ends when the user types a carriage return (PHP_EOL). Optionally, It also provides a
      * prompt.
      *
-     * @param string $prompt the prompt to display before waiting for input (optional)
+     * @param string|null $prompt the prompt to display before waiting for input (optional)
      * @return string the user's input
      */
     public static function input($prompt = null)
@@ -739,7 +830,7 @@ class BaseConsole
     /**
      * Prints text to STDOUT appended with a carriage return (PHP_EOL).
      *
-     * @param string $string the text to print
+     * @param string|null $string the text to print
      * @return int|bool number of bytes printed or false on error.
      */
     public static function output($string = null)
@@ -750,7 +841,7 @@ class BaseConsole
     /**
      * Prints text to STDERR appended with a carriage return (PHP_EOL).
      *
-     * @param string $string the text to print
+     * @param string|null $string the text to print
      * @return int|bool number of bytes printed or false on error.
      */
     public static function error($string = null)
@@ -759,7 +850,7 @@ class BaseConsole
     }
 
     /**
-     * Prompts the user for input and validates it
+     * Prompts the user for input and validates it.
      *
      * @param string $text prompt string
      * @param array $options the options to validate the input:
@@ -777,15 +868,15 @@ class BaseConsole
     {
         $options = ArrayHelper::merge(
             [
-                'required'  => false,
-                'default'   => null,
-                'pattern'   => null,
+                'required' => false,
+                'default' => null,
+                'pattern' => null,
                 'validator' => null,
-                'error'     => 'Invalid input.',
+                'error' => 'Invalid input.',
             ],
             $options
         );
-        $error   = null;
+        $error = null;
 
         top:
         $input = $options['default']
@@ -802,9 +893,7 @@ class BaseConsole
         } elseif ($options['pattern'] && !preg_match($options['pattern'], $input)) {
             static::output($options['error']);
             goto top;
-        } elseif ($options['validator'] &&
-            !call_user_func_array($options['validator'], [$input, &$error])
-        ) {
+        } elseif ($options['validator'] && !call_user_func_array($options['validator'], [$input, &$error])) {
             static::output(isset($error) ? $error : $options['error']);
             goto top;
         }
@@ -817,7 +906,7 @@ class BaseConsole
      *
      * A typical usage looks like the following:
      *
-     * ```php
+     * ```
      * if (Console::confirm("Are you sure?")) {
      *     echo "user typed yes\n";
      * } else {
@@ -854,14 +943,19 @@ class BaseConsole
      * a list of options to choose from and their explanations.
      *
      * @param string $prompt the prompt message
-     * @param array $options Key-value array of options to choose from
+     * @param array $options Key-value array of options to choose from. Key is what is inputed and used, value is
+     * what's displayed to end user by help command.
+     * @param string|null $default value to use when the user doesn't provide an option.
+     * If the default is `null`, the user is required to select an option.
      *
      * @return string An option character the user chose
+     * @since 2.0.49 Added the $default argument
      */
-    public static function select($prompt, $options = [])
+    public static function select($prompt, $options = [], $default = null)
     {
         top:
-        static::stdout("$prompt [" . implode(',', array_keys($options)) . ',?]: ');
+        static::stdout("$prompt (" . implode(',', array_keys($options)) . ',?)'
+            . ($default !== null ? '[' . $default . ']' : '') . ': ');
         $input = static::stdin();
         if ($input === '?') {
             foreach ($options as $key => $value) {
@@ -869,6 +963,8 @@ class BaseConsole
             }
             static::output(' ? - Show help');
             goto top;
+        } elseif ($default !== null && $input === '') {
+            return $default;
         } elseif (!array_key_exists($input, $options)) {
             goto top;
         }
@@ -886,11 +982,11 @@ class BaseConsole
     /**
      * Starts display of a progress bar on screen.
      *
-     * This bar will be updated by [[updateProgress()]] and my be ended by [[endProgress()]].
+     * This bar will be updated by [[updateProgress()]] and may be ended by [[endProgress()]].
      *
      * The following example shows a simple usage of a progress bar:
      *
-     * ```php
+     * ```
      * Console::startProgress(0, 1000);
      * for ($n = 1; $n <= 1000; $n++) {
      *     usleep(1000);
@@ -900,7 +996,8 @@ class BaseConsole
      * ```
      *
      * Git clone like progress (showing only status information):
-     * ```php
+     *
+     * ```
      * Console::startProgress(0, 1000, 'Counting objects: ', false);
      * for ($n = 1; $n <= 1000; $n++) {
      *     usleep(1000);
@@ -913,7 +1010,7 @@ class BaseConsole
      * @param int $total the total value of items that are to be done.
      * @param string $prefix an optional string to display before the progress bar.
      * Default to empty string which results in no prefix to be displayed.
-     * @param int|bool $width optional width of the progressbar. This can be an integer representing
+     * @param int|float|bool|null $width optional width of the progressbar. This can be an integer representing
      * the number of characters to display for the progress bar or a float between 0 and 1 representing the
      * percentage of screen with the progress bar may take. It can also be set to false to disable the
      * bar and only show progress information like percent, number of items and ETA.
@@ -939,7 +1036,7 @@ class BaseConsole
      *
      * @param int $done the number of items that are completed.
      * @param int $total the total value of items that are to be done.
-     * @param string $prefix an optional string to display before the progress bar.
+     * @param string|null $prefix an optional string to display before the progress bar.
      * Defaults to null meaning the prefix specified by [[startProgress()]] will be used.
      * If prefix is specified it will update the prefix that will be used by later calls.
      * @see startProgress
@@ -947,46 +1044,16 @@ class BaseConsole
      */
     public static function updateProgress($done, $total, $prefix = null)
     {
-        $width = self::$_progressWidth;
-        if ($width === false) {
-            $width = 0;
-        } else {
-            $screenSize = static::getScreenSize(true);
-            if ($screenSize === false && $width < 1) {
-                $width = 0;
-            } elseif ($width === null) {
-                $width = $screenSize[0];
-            } elseif ($width > 0 && $width < 1) {
-                $width = floor($screenSize[0] * $width);
-            }
-        }
         if ($prefix === null) {
             $prefix = self::$_progressPrefix;
         } else {
             self::$_progressPrefix = $prefix;
         }
-        $width -= static::ansiStrlen($prefix);
-
+        $width = static::getProgressbarWidth($prefix);
         $percent = ($total == 0) ? 1 : $done / $total;
         $info = sprintf('%d%% (%d/%d)', $percent * 100, $done, $total);
-
-        if ($done > $total || $done == 0) {
-            self::$_progressEta = null;
-            self::$_progressEtaLastUpdate = time();
-        } elseif ($done < $total) {
-            // update ETA once per second to avoid flapping
-            if (time() - self::$_progressEtaLastUpdate > 1 && $done > self::$_progressEtaLastDone) {
-                $rate = (time() - (self::$_progressEtaLastUpdate ?: self::$_progressStart)) / ($done - self::$_progressEtaLastDone);
-                self::$_progressEta = $rate * ($total - $done);
-                self::$_progressEtaLastUpdate = time();
-                self::$_progressEtaLastDone = $done;
-            }
-        }
-        if (self::$_progressEta === null) {
-            $info .= ' ETA: n/a';
-        } else {
-            $info .= sprintf(' ETA: %d sec.', self::$_progressEta);
-        }
+        self::setETA($done, $total);
+        $info .= self::$_progressEta === null ? ' ETA: n/a' : sprintf(' ETA: %d sec.', self::$_progressEta);
 
         // Number extra characters outputted. These are opening [, closing ], and space before info
         // Since Windows uses \r\n\ for line endings, there's one more in the case
@@ -1010,6 +1077,60 @@ class BaseConsole
             static::stdout("\r$prefix" . "[$status] $info");
         }
         flush();
+    }
+
+    /**
+     * Return width of the progressbar
+     * @param string $prefix an optional string to display before the progress bar.
+     * @see updateProgress
+     * @return int screen width
+     * @since 2.0.14
+     */
+    private static function getProgressbarWidth($prefix)
+    {
+        $width = self::$_progressWidth;
+
+        if ($width === false) {
+            return 0;
+        }
+
+        $screenSize = static::getScreenSize(true);
+        if ($screenSize === false && $width < 1) {
+            return 0;
+        }
+
+        if ($width === null) {
+            $width = $screenSize[0];
+        } elseif ($width > 0 && $width < 1) {
+            $width = floor($screenSize[0] * $width);
+        }
+
+        $width -= static::ansiStrlen($prefix);
+
+        return $width;
+    }
+
+    /**
+     * Calculate $_progressEta, $_progressEtaLastUpdate and $_progressEtaLastDone
+     * @param int $done the number of items that are completed.
+     * @param int $total the total value of items that are to be done.
+     * @see updateProgress
+     * @since 2.0.14
+     */
+    private static function setETA($done, $total)
+    {
+        if ($done > $total || $done == 0) {
+            self::$_progressEta = null;
+            self::$_progressEtaLastUpdate = time();
+            return;
+        }
+
+        if ($done < $total && (time() - self::$_progressEtaLastUpdate > 1 && $done > self::$_progressEtaLastDone)) {
+            $rate = (time() - (self::$_progressEtaLastUpdate ?: self::$_progressStart)) / ($done - self::$_progressEtaLastDone);
+            self::$_progressEta = $rate * ($total - $done);
+            self::$_progressEtaLastUpdate = time();
+            self::$_progressEtaLastDone = $done;
+        }
     }
 
     /**
@@ -1041,5 +1162,46 @@ class BaseConsole
         self::$_progressEta = null;
         self::$_progressEtaLastDone = 0;
         self::$_progressEtaLastUpdate = null;
+    }
+
+    /**
+     * Generates a summary of the validation errors.
+     * @param Model|Model[] $models the model(s) whose validation errors are to be displayed.
+     * @param array $options the tag options in terms of name-value pairs. The following options are specially handled:
+     *
+     * - showAllErrors: boolean, if set to true every error message for each attribute will be shown otherwise
+     *   only the first error message for each attribute will be shown. Defaults to `false`.
+     *
+     * @return string the generated error summary
+     * @since 2.0.14
+     */
+    public static function errorSummary($models, $options = [])
+    {
+        $showAllErrors = ArrayHelper::remove($options, 'showAllErrors', false);
+        $lines = self::collectErrors($models, $showAllErrors);
+
+        return implode(PHP_EOL, $lines);
+    }
+
+    /**
+     * Return array of the validation errors
+     * @param Model|Model[] $models the model(s) whose validation errors are to be displayed.
+     * @param $showAllErrors boolean, if set to true every error message for each attribute will be shown otherwise
+     * only the first error message for each attribute will be shown.
+     * @return array of the validation errors
+     * @since 2.0.14
+     */
+    private static function collectErrors($models, $showAllErrors)
+    {
+        $lines = [];
+        if (!is_array($models)) {
+            $models = [$models];
+        }
+
+        foreach ($models as $model) {
+            $lines = array_unique(array_merge($lines, $model->getErrorSummary($showAllErrors)));
+        }
+
+        return $lines;
     }
 }

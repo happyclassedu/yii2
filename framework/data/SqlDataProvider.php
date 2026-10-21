@@ -1,16 +1,17 @@
 <?php
+
 /**
- * @link http://www.yiiframework.com/
+ * @link https://www.yiiframework.com/
  * @copyright Copyright (c) 2008 Yii Software LLC
- * @license http://www.yiiframework.com/license/
+ * @license https://www.yiiframework.com/license/
  */
 
 namespace yii\data;
 
-use Yii;
 use yii\base\InvalidConfigException;
 use yii\db\Connection;
 use yii\db\Expression;
+use yii\db\Query;
 use yii\di\Instance;
 
 /**
@@ -25,7 +26,7 @@ use yii\di\Instance;
  *
  * SqlDataProvider may be used in the following way:
  *
- * ```php
+ * ```
  * $count = Yii::$app->db->createCommand('
  *     SELECT COUNT(*) FROM user WHERE status=:status
  * ', [':status' => 1])->queryScalar();
@@ -79,7 +80,7 @@ class SqlDataProvider extends BaseDataProvider
      */
     public $params = [];
     /**
-     * @var string|callable the column that is used as the key of the data models.
+     * @var string|callable|null the column that is used as the key of the data models.
      * This can be either a column name, or a callable that returns the key value of a given data model.
      *
      * If this is not set, the keys of the [[models]] array will be used.
@@ -102,7 +103,7 @@ class SqlDataProvider extends BaseDataProvider
     }
 
     /**
-     * @inheritdoc
+     * {@inheritdoc}
      */
     protected function prepareModels()
     {
@@ -118,7 +119,7 @@ class SqlDataProvider extends BaseDataProvider
 
         if ($sort !== false) {
             $orders = $sort->getOrders();
-            $pattern = '/\s+order\s+by\s+([\w\s,\.]+)$/i';
+            $pattern = '/\s+order\s+by\s+([\w\s,\."`\[\]]+)$/i';
             if (preg_match($pattern, $sql, $matches)) {
                 array_unshift($orders, new Expression($matches[1]));
                 $sql = preg_replace($pattern, '', $sql);
@@ -137,7 +138,7 @@ class SqlDataProvider extends BaseDataProvider
     }
 
     /**
-     * @inheritdoc
+     * {@inheritdoc}
      */
     protected function prepareKeys($models)
     {
@@ -152,16 +153,19 @@ class SqlDataProvider extends BaseDataProvider
             }
 
             return $keys;
-        } else {
-            return array_keys($models);
         }
+
+        return array_keys($models);
     }
 
     /**
-     * @inheritdoc
+     * {@inheritdoc}
      */
     protected function prepareTotalCount()
     {
-        return 0;
+        return (new Query([
+            'from' => ['sub' => "({$this->sql})"],
+            'params' => $this->params,
+        ]))->count('*', $this->db);
     }
 }

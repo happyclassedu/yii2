@@ -1,14 +1,14 @@
 <?php
+
 /**
- * @link http://www.yiiframework.com/
+ * @link https://www.yiiframework.com/
  * @copyright Copyright (c) 2008 Yii Software LLC
- * @license http://www.yiiframework.com/license/
+ * @license https://www.yiiframework.com/license/
  */
 
 namespace yii\widgets;
 
 use yii\base\InvalidConfigException;
-use yii\helpers\Html;
 use yii\helpers\Json;
 use yii\web\JsExpression;
 use yii\web\View;
@@ -22,7 +22,7 @@ use yii\web\View;
  * To use MaskedInput, you must set the [[mask]] property. The following example
  * shows how to use MaskedInput to collect phone numbers:
  *
- * ```php
+ * ```
  * echo MaskedInput::widget([
  *     'name' => 'phone',
  *     'mask' => '999-999-9999',
@@ -32,14 +32,14 @@ use yii\web\View;
  * You can also use this widget in an [[ActiveForm]] using the [[ActiveField::widget()|widget()]]
  * method, for example like this:
  *
- * ```php
- * <?= $form->field($model, 'from_date')->widget(\yii\widgets\MaskedInput::className(), [
+ * ```
+ * <?= $form->field($model, 'from_date')->widget(\yii\widgets\MaskedInput::class, [
  *     'mask' => '999-999-9999',
  * ]) ?>
  * ```
  *
  * The masked text field is implemented based on the
- * [jQuery input masked plugin](https://github.com/RobinHerbots/jquery.inputmask).
+ * [jQuery input masked plugin](https://github.com/RobinHerbots/Inputmask).
  *
  * @author Kartik Visweswaran <kartikv2@gmail.com>
  * @since 2.0
@@ -49,8 +49,7 @@ class MaskedInput extends InputWidget
     /**
      * The name of the jQuery plugin to use for this widget.
      */
-    const PLUGIN_NAME = 'inputmask';
-
+    public const PLUGIN_NAME = 'inputmask';
     /**
      * @var string|array|JsExpression the input mask (e.g. '99/99/9999' for date input). The following characters
      * can be used in the mask and are predefined:
@@ -65,7 +64,7 @@ class MaskedInput extends InputWidget
      */
     public $mask;
     /**
-     * @var array custom mask definitions to use. Should be configured as `maskSymbol => settings`, where
+     * @var array|null custom mask definitions to use. Should be configured as `maskSymbol => settings`, where
      *
      * - `maskSymbol` is a string, containing a character to identify your mask definition and
      * - `settings` is an array, consisting of the following entries:
@@ -76,7 +75,7 @@ class MaskedInput extends InputWidget
      */
     public $definitions;
     /**
-     * @var array custom aliases to use. Should be configured as `maskAlias => settings`, where
+     * @var array|null custom aliases to use. Should be configured as `maskAlias => settings`, where
      *
      * - `maskAlias` is a string containing a text to identify your mask alias definition (e.g. 'phone') and
      * - `settings` is an array containing settings for the mask symbol, exactly similar to parameters as passed in [[clientOptions]].
@@ -84,7 +83,7 @@ class MaskedInput extends InputWidget
     public $aliases;
     /**
      * @var array the JQuery plugin options for the input mask plugin.
-     * @see https://github.com/RobinHerbots/jquery.inputmask
+     * @see https://github.com/RobinHerbots/Inputmask
      */
     public $clientOptions = [];
     /**
@@ -94,15 +93,35 @@ class MaskedInput extends InputWidget
     public $options = ['class' => 'form-control'];
     /**
      * @var string the type of the input tag. Currently only 'text' and 'tel' are supported.
-     * @see https://github.com/RobinHerbots/jquery.inputmask
+     * @see https://github.com/RobinHerbots/Inputmask
      * @since 2.0.6
      */
     public $type = 'text';
 
     /**
-     * @var string the hashed variable to store the pluginOptions
+     * @var string|null the hashed variable to store the pluginOptions
      */
     protected $_hashVar;
+    /**
+     * @var string[] the inputmask properties can be contained callbacks
+     */
+    protected $_jsCallbacks = [
+        'oncomplete',
+        'onincomplete',
+        'oncleared',
+        'onKeyDown',
+        'onBeforeMask',
+        'onBeforePaste',
+        'onBeforeWrite',
+        'onUnMask',
+        'onKeyValidation',
+        'isComplete',
+        // @deprecated removed in 5.0:
+        'preValidation',
+        'postValidation',
+        // @deprecated removed in 4.0:
+        'canClearPosition'
+    ];
 
 
     /**
@@ -113,26 +132,24 @@ class MaskedInput extends InputWidget
     public function init()
     {
         parent::init();
-        if (empty($this->mask) && empty($this->clientOptions['alias'])) {
-            throw new InvalidConfigException("Either the 'mask' property or the 'clientOptions[\"alias\"]' property must be set.");
+        if (empty($this->mask) && empty($this->clientOptions['regex']) && empty($this->clientOptions['alias'])) {
+            throw new InvalidConfigException("Either the 'mask' property, 'clientOptions[\"regex\"]' or the 'clientOptions[\"alias\"]' property must be set.");
         }
     }
 
     /**
-     * @inheritdoc
+     * {@inheritdoc}
      */
     public function run()
     {
         $this->registerClientScript();
-        if ($this->hasModel()) {
-            echo Html::activeInput($this->type, $this->model, $this->attribute, $this->options);
-        } else {
-            echo Html::input($this->type, $this->name, $this->value, $this->options);
-        }
+        echo $this->renderInputHtml($this->type);
     }
 
     /**
-     * Generates a hashed variable to store the plugin `clientOptions`. Helps in reusing the variable for similar
+     * Generates a hashed variable to store the plugin `clientOptions`.
+     *
+     * Helps in reusing the variable for similar
      * options passed for other widgets on the same page. The following special data attribute will also be
      * added to the input field to allow accessing the client options via javascript:
      *
@@ -146,18 +163,20 @@ class MaskedInput extends InputWidget
         $encOptions = empty($this->clientOptions) ? '{}' : Json::htmlEncode($this->clientOptions);
         $this->_hashVar = self::PLUGIN_NAME . '_' . hash('crc32', $encOptions);
         $this->options['data-plugin-' . self::PLUGIN_NAME] = $this->_hashVar;
-        $view->registerJs("var {$this->_hashVar} = {$encOptions};", View::POS_READY);
+        $view->registerJs("var {$this->_hashVar} = {$encOptions};", View::POS_HEAD);
     }
 
     /**
-     * Initializes client options
+     * Initializes client options.
      */
     protected function initClientOptions()
     {
         $options = $this->clientOptions;
         foreach ($options as $key => $value) {
-            if (!$value instanceof JsExpression && in_array($key, ['oncomplete', 'onincomplete', 'oncleared', 'onKeyUp',
-                    'onKeyDown', 'onBeforeMask', 'onBeforePaste', 'onUnMask', 'isComplete', 'determineActiveMasksetIndex'], true)
+            if (
+                !empty($value)
+                && !$value instanceof JsExpression
+                && in_array($key, $this->_jsCallbacks, true)
             ) {
                 $options[$key] = new JsExpression($value);
             }

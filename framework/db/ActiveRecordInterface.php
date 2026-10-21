@@ -1,20 +1,23 @@
 <?php
+
 /**
- * @link http://www.yiiframework.com/
+ * @link https://www.yiiframework.com/
  * @copyright Copyright (c) 2008 Yii Software LLC
- * @license http://www.yiiframework.com/license/
+ * @license https://www.yiiframework.com/license/
  */
 
 namespace yii\db;
 
+use yii\base\StaticInstanceInterface;
+
 /**
- * ActiveRecordInterface
+ * ActiveRecordInterface.
  *
  * @author Qiang Xue <qiang.xue@gmail.com>
  * @author Carsten Brandt <mail@cebe.cc>
  * @since 2.0
  */
-interface ActiveRecordInterface
+interface ActiveRecordInterface extends StaticInstanceInterface
 {
     /**
      * Returns the primary key **name(s)** for this AR class.
@@ -77,9 +80,6 @@ interface ActiveRecordInterface
      * @param bool $asArray whether to return the primary key value as an array. If true,
      * the return value will be an array with column name as key and column value as value.
      * If this is `false` (default), a scalar value will be returned for non-composite primary key.
-     * @property mixed The old primary key value. An array (column name => column value) is
-     * returned if the primary key is composite. A string is returned otherwise (`null` will be
-     * returned if the key value is `null`).
      * @return mixed the old primary key value. An array (column name => column value) is returned if the primary key
      * is composite or `$asArray` is true. A string is returned otherwise (`null` will be returned if
      * the key value is `null`).
@@ -87,7 +87,7 @@ interface ActiveRecordInterface
     public function getOldPrimaryKey($asArray = false);
 
     /**
-     * Returns a value indicating whether the given set of attributes represents the primary key for this model
+     * Returns a value indicating whether the given set of attributes represents the primary key for this model.
      * @param array $keys the set of attributes to check
      * @return bool whether the given set of attributes represents the primary key for this model
      */
@@ -100,7 +100,7 @@ interface ActiveRecordInterface
      * methods defined in [[ActiveQueryInterface]] before `one()` or `all()` is called to return
      * populated ActiveRecord instances. For example,
      *
-     * ```php
+     * ```
      * // find the customer whose ID is 1
      * $customer = Customer::find()->where(['id' => 1])->one();
      *
@@ -116,7 +116,7 @@ interface ActiveRecordInterface
      *
      * You may override this method to return a customized query. For example,
      *
-     * ```php
+     * ```
      * class Customer extends ActiveRecord
      * {
      *     public static function find()
@@ -129,7 +129,7 @@ interface ActiveRecordInterface
      *
      * The following code shows how to apply a default condition for all queries:
      *
-     * ```php
+     * ```
      * class Customer extends ActiveRecord
      * {
      *     public static function find()
@@ -145,6 +145,7 @@ interface ActiveRecordInterface
      * // Use where() to ignore the default condition
      * // SELECT FROM customer WHERE age>30
      * $customers = Customer::find()->where('age>30')->all();
+     * ```
      *
      * @return ActiveQueryInterface the newly created [[ActiveQueryInterface]] instance.
      */
@@ -161,16 +162,29 @@ interface ActiveRecordInterface
      *    first record (or `null` if not found).
      *  - an associative array of name-value pairs: query by a set of attribute values and return a single record
      *    matching all of them (or `null` if not found). Note that `['id' => 1, 2]` is treated as a non-associative array.
+     *    Column names are limited to current records table columns for SQL DBMS, or filtered otherwise to be limited to simple filter conditions.
+     *  - a yii\db\Expression: The expression will be used directly. (@since 2.0.37)
      *
      * That this method will automatically call the `one()` method and return an [[ActiveRecordInterface|ActiveRecord]]
-     * instance. For example,
+     * instance.
      *
-     * ```php
+     * > Note: As this is a short-hand method only, using more complex conditions, like ['!=', 'id', 1] will not work.
+     * > If you need to specify more complex conditions, use [[find()]] in combination with [[ActiveQuery::where()|where()]] instead.
+     *
+     * See the following code for usage examples:
+     *
+     * ```
      * // find a single customer whose primary key value is 10
      * $customer = Customer::findOne(10);
      *
      * // the above code is equivalent to:
      * $customer = Customer::find()->where(['id' => 10])->one();
+     *
+     * // find the customers whose primary key value is 10, 11 or 12.
+     * $customers = Customer::findOne([10, 11, 12]);
+     *
+     * // the above code is equivalent to:
+     * $customers = Customer::find()->where(['id' => [10, 11, 12]])->one();
      *
      * // find the first customer whose age is 30 and whose status is 1
      * $customer = Customer::findOne(['age' => 30, 'status' => 1]);
@@ -179,8 +193,26 @@ interface ActiveRecordInterface
      * $customer = Customer::find()->where(['age' => 30, 'status' => 1])->one();
      * ```
      *
+     * If you need to pass user input to this method, make sure the input value is scalar or in case of
+     * array condition, make sure the array structure can not be changed from the outside:
+     *
+     * ```
+     * // yii\web\Controller ensures that $id is scalar
+     * public function actionView($id)
+     * {
+     *     $model = Post::findOne($id);
+     *     // ...
+     * }
+     *
+     * // explicitly specifying the colum to search, passing a scalar or array here will always result in finding a single record
+     * $model = Post::findOne(['id' => Yii::$app->request->get('id')]);
+     *
+     * // do NOT use the following code! it is possible to inject an array condition to filter by arbitrary column values!
+     * $model = Post::findOne(Yii::$app->request->get('id'));
+     * ```
+     *
      * @param mixed $condition primary key value or a set of column values
-     * @return static ActiveRecord instance matching the condition, or `null` if nothing matches.
+     * @return static|null ActiveRecord instance matching the condition, or `null` if nothing matches.
      */
     public static function findOne($condition);
 
@@ -198,11 +230,18 @@ interface ActiveRecordInterface
      *  - an associative array of name-value pairs: query by a set of attribute values and return an array of records
      *    matching all of them (or an empty array if none was found). Note that `['id' => 1, 2]` is treated as
      *    a non-associative array.
+     *    Column names are limited to current records table columns for SQL DBMS, or filtered otherwise to be limted to simple filter conditions.
+     *  - a yii\db\Expression: The expression will be used directly. (@since 2.0.37)
      *
      * This method will automatically call the `all()` method and return an array of [[ActiveRecordInterface|ActiveRecord]]
-     * instances. For example,
+     * instances.
      *
-     * ```php
+     * > Note: As this is a short-hand method only, using more complex conditions, like ['!=', 'id', 1] will not work.
+     * > If you need to specify more complex conditions, use [[find()]] in combination with [[ActiveQuery::where()|where()]] instead.
+     *
+     * See the following code for usage examples:
+     *
+     * ```
      * // find the customers whose primary key value is 10
      * $customers = Customer::findAll(10);
      *
@@ -222,6 +261,24 @@ interface ActiveRecordInterface
      * $customers = Customer::find()->where(['age' => 30, 'status' => 1])->all();
      * ```
      *
+     * If you need to pass user input to this method, make sure the input value is scalar or in case of
+     * array condition, make sure the array structure can not be changed from the outside:
+     *
+     * ```
+     * // yii\web\Controller ensures that $id is scalar
+     * public function actionView($id)
+     * {
+     *     $model = Post::findOne($id);
+     *     // ...
+     * }
+     *
+     * // explicitly specifying the colum to search, passing a scalar or array here will always result in finding a single record
+     * $model = Post::findOne(['id' => Yii::$app->request->get('id')]);
+     *
+     * // do NOT use the following code! it is possible to inject an array condition to filter by arbitrary column values!
+     * $model = Post::findOne(Yii::$app->request->get('id'));
+     * ```
+     *
      * @param mixed $condition primary key value or a set of column values
      * @return array an array of ActiveRecord instance, or an empty array if nothing matches.
      */
@@ -229,15 +286,16 @@ interface ActiveRecordInterface
 
     /**
      * Updates records using the provided attribute values and conditions.
+     *
      * For example, to change the status to be 1 for all customers whose status is 2:
      *
-     * ```php
+     * ```
      * Customer::updateAll(['status' => 1], ['status' => '2']);
      * ```
      *
      * @param array $attributes attribute values (name-value pairs) to be saved for the record.
      * Unlike [[update()]] these are not going to be validated.
-     * @param array $condition the condition that matches the records that should get updated.
+     * @param mixed $condition the condition that matches the records that should get updated.
      * Please refer to [[QueryInterface::where()]] on how to specify this parameter.
      * An empty condition will match all records.
      * @return int the number of rows updated
@@ -250,11 +308,11 @@ interface ActiveRecordInterface
      *
      * For example, to delete all customers whose status is 3:
      *
-     * ```php
+     * ```
      * Customer::deleteAll([status = 3]);
      * ```
      *
-     * @param array $condition the condition that matches the records that should get deleted.
+     * @param array|null $condition the condition that matches the records that should get deleted.
      * Please refer to [[QueryInterface::where()]] on how to specify this parameter.
      * An empty condition will match all records.
      * @return int the number of rows deleted
@@ -269,7 +327,7 @@ interface ActiveRecordInterface
      *
      * For example, to save a customer record:
      *
-     * ```php
+     * ```
      * $customer = new Customer; // or $customer = Customer::findOne($id);
      * $customer->name = $name;
      * $customer->email = $email;
@@ -279,7 +337,7 @@ interface ActiveRecordInterface
      * @param bool $runValidation whether to perform validation (calling [[\yii\base\Model::validate()|validate()]])
      * before saving the record. Defaults to `true`. If the validation fails, the record
      * will not be saved to the database and this method will return `false`.
-     * @param array $attributeNames list of attribute names that need to be saved. Defaults to `null`,
+     * @param array|null $attributeNames list of attribute names that need to be saved. Defaults to `null`,
      * meaning all attributes that are loaded from DB will be saved.
      * @return bool whether the saving succeeded (i.e. no validation errors occurred).
      */
@@ -290,7 +348,7 @@ interface ActiveRecordInterface
      *
      * Usage example:
      *
-     * ```php
+     * ```
      * $customer = new Customer;
      * $customer->name = $name;
      * $customer->email = $email;
@@ -300,7 +358,7 @@ interface ActiveRecordInterface
      * @param bool $runValidation whether to perform validation (calling [[\yii\base\Model::validate()|validate()]])
      * before saving the record. Defaults to `true`. If the validation fails, the record
      * will not be saved to the database and this method will return `false`.
-     * @param array $attributes list of attributes that need to be saved. Defaults to `null`,
+     * @param array|null $attributes list of attributes that need to be saved. Defaults to `null`,
      * meaning all attributes that are loaded from DB will be saved.
      * @return bool whether the attributes are valid and the record is inserted successfully.
      */
@@ -311,7 +369,7 @@ interface ActiveRecordInterface
      *
      * Usage example:
      *
-     * ```php
+     * ```
      * $customer = Customer::findOne($id);
      * $customer->name = $name;
      * $customer->email = $email;
@@ -321,7 +379,7 @@ interface ActiveRecordInterface
      * @param bool $runValidation whether to perform validation (calling [[\yii\base\Model::validate()|validate()]])
      * before saving the record. Defaults to `true`. If the validation fails, the record
      * will not be saved to the database and this method will return `false`.
-     * @param array $attributeNames list of attributes that need to be saved. Defaults to `null`,
+     * @param array|null $attributeNames list of attributes that need to be saved. Defaults to `null`,
      * meaning all attributes that are loaded from DB will be saved.
      * @return int|bool the number of rows affected, or `false` if validation fails
      * or updating process is stopped for other reasons.

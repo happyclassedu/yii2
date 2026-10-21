@@ -1,14 +1,15 @@
 <?php
+
 /**
- * @link http://www.yiiframework.com/
+ * @link https://www.yiiframework.com/
  * @copyright Copyright (c) 2008 Yii Software LLC
- * @license http://www.yiiframework.com/license/
+ * @license https://www.yiiframework.com/license/
  */
 
 namespace yii\build\controllers;
 
 use DirectoryIterator;
-use Yii;
+use yii\console\Application;
 use yii\console\Controller;
 use yii\helpers\Html;
 
@@ -18,6 +19,8 @@ use yii\helpers\Html;
  * build translation "../docs/guide" "../docs/guide-ru" "Russian guide translation report" > report_guide_ru.html
  *
  * @author Alexander Makarov <sam@rmcreative.ru>
+ *
+ * @extends Controller<Application>
  */
 class TranslationController extends Controller
 {
@@ -29,7 +32,6 @@ class TranslationController extends Controller
      * @param string $sourcePath the directory where the original documentation files are
      * @param string $translationPath the directory where the translated documentation files are
      * @param string $title custom title to use for report
-     * @return string
      */
     public function actionReport($sourcePath, $translationPath, $title = 'Translation report')
     {
@@ -40,14 +42,14 @@ class TranslationController extends Controller
 
         $dir = new DirectoryIterator($sourcePath);
         foreach ($dir as $fileinfo) {
-            /* @var $fileinfo DirectoryIterator */
+            /** @var DirectoryIterator $fileinfo */
             if (!$fileinfo->isDot() && !$fileinfo->isDir()) {
                 $translatedFilePath = $translationPath . '/' . $fileinfo->getFilename();
                 $sourceFilePath = $sourcePath . '/' . $fileinfo->getFilename();
 
                 $errors = $this->checkFiles($translatedFilePath);
                 $diff = empty($errors) ? $this->getDiff($translatedFilePath, $sourceFilePath) : '';
-                if(!empty($diff)) {
+                if (!empty($diff)) {
                     $errors[] = 'Translation outdated.';
                 }
 
@@ -63,12 +65,12 @@ class TranslationController extends Controller
         // checking if there are obsolete translation files
         $dir = new DirectoryIterator($translationPath);
         foreach ($dir as $fileinfo) {
-            /* @var $fileinfo \DirectoryIterator */
+            /** @var DirectoryIterator $fileinfo */
             if (!$fileinfo->isDot() && !$fileinfo->isDir()) {
                 $translatedFilePath = $translationPath . '/' . $fileinfo->getFilename();
 
                 $errors = $this->checkFiles(null, $translatedFilePath);
-                if(!empty($errors)) {
+                if (!empty($errors)) {
                     $results[$fileinfo->getFilename()]['errors'] = $errors;
                 }
             }
@@ -83,7 +85,7 @@ class TranslationController extends Controller
     }
 
     /**
-     * Checks for files existence
+     * Checks for files existence.
      *
      * @param string $translatedFilePath
      * @param string $sourceFilePath
@@ -104,7 +106,7 @@ class TranslationController extends Controller
     }
 
     /**
-     * Getting DIFF from git
+     * Getting DIFF from git.
      *
      * @param string $translatedFilePath path pointing to translated file
      * @param string $sourceFilePath path pointing to original file
@@ -112,12 +114,17 @@ class TranslationController extends Controller
      */
     protected function getDiff($translatedFilePath, $sourceFilePath)
     {
-        $lastTranslationHash = shell_exec('git log -1 --format=format:"%H" -- ' . $translatedFilePath);
-        return shell_exec('git diff ' . $lastTranslationHash.'..HEAD -- ' . $sourceFilePath);
+        $lastTranslationHash = trim((string) shell_exec(
+            'git log -1 --format=format:%H -- ' . escapeshellarg($translatedFilePath)
+        ));
+
+        return shell_exec(
+            'git diff ' . escapeshellarg($lastTranslationHash . '..HEAD') . ' -- ' . escapeshellarg($sourceFilePath)
+        );
     }
 
     /**
-     * Adds all necessary HTML tags and classes to diff output
+     * Adds all necessary HTML tags and classes to diff output.
      *
      * @param string $diff DIFF
      * @return string highlighted DIFF
@@ -126,11 +133,11 @@ class TranslationController extends Controller
     {
         $lines = explode("\n", $diff);
         foreach ($lines as $key => $val) {
-            if (mb_substr($val, 0, 1, 'utf-8') === '@') {
+            if (strpos($val, '@') === 0) {
                 $lines[$key] = '<span class="info">' . Html::encode($val) . '</span>';
-            } elseif (mb_substr($val, 0, 1, 'utf-8') === '+') {
+            } elseif (strpos($val, '+') === 0) {
                 $lines[$key] = '<ins>' . Html::encode($val) . '</ins>';
-            } elseif (mb_substr($val, 0, 1, 'utf-8') === '-') {
+            } elseif (strpos($val, '-') === 0) {
                 $lines[$key] = '<del>' . Html::encode($val) . '</del>';
             } else {
                 $lines[$key] = Html::encode($val);

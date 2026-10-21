@@ -1,8 +1,9 @@
 <?php
+
 /**
- * @link http://www.yiiframework.com/
+ * @link https://www.yiiframework.com/
  * @copyright Copyright (c) 2008 Yii Software LLC
- * @license http://www.yiiframework.com/license/
+ * @license https://www.yiiframework.com/license/
  */
 
 namespace yii\db;
@@ -14,7 +15,7 @@ namespace yii\db;
  * it will be replaced with the [[expression]] property value without any
  * DB escaping or quoting. For example,
  *
- * ```php
+ * ```
  * $expression = new Expression('NOW()');
  * $now = (new \yii\db\Query)->select($expression)->scalar();  // SELECT NOW();
  * echo $now; // prints the current date
@@ -28,7 +29,7 @@ namespace yii\db;
  * @author Qiang Xue <qiang.xue@gmail.com>
  * @since 2.0
  */
-class Expression extends \yii\base\Object
+class Expression extends \yii\base\BaseObject implements ExpressionInterface
 {
     /**
      * @var string the DB expression
@@ -56,8 +57,8 @@ class Expression extends \yii\base\Object
     }
 
     /**
-     * String magic method
-     * @return string the DB expression
+     * String magic method.
+     * @return string the DB expression.
      */
     public function __toString()
     {

@@ -1,8 +1,9 @@
 <?php
+
 /**
- * @link http://www.yiiframework.com/
+ * @link https://www.yiiframework.com/
  * @copyright Copyright (c) 2008 Yii Software LLC
- * @license http://www.yiiframework.com/license/
+ * @license https://www.yiiframework.com/license/
  */
 
 namespace yii\data;
@@ -27,7 +28,7 @@ use yii\helpers\ArrayHelper;
  *
  * ArrayDataProvider may be used in the following way:
  *
- * ```php
+ * ```
  * $query = new Query;
  * $provider = new ArrayDataProvider([
  *     'allModels' => $query->from('post')->all(),
@@ -53,8 +54,9 @@ use yii\helpers\ArrayHelper;
 class ArrayDataProvider extends BaseDataProvider
 {
     /**
-     * @var string|callable the column that is used as the key of the data models.
-     * This can be either a column name, or a callable that returns the key value of a given data model.
+     * @var string|array|callable|null the column that is used as the key of the data models.
+     * This can be either a column name, a dot-separated path, an array of keys, or a callable
+     * that returns the key value of a given data model.
      * If this is not set, the index of the [[models]] array will be used.
      * @see getKeys()
      */
@@ -74,7 +76,7 @@ class ArrayDataProvider extends BaseDataProvider
 
 
     /**
-     * @inheritdoc
+     * {@inheritdoc}
      */
     protected function prepareModels()
     {
@@ -98,36 +100,27 @@ class ArrayDataProvider extends BaseDataProvider
     }
 
     /**
-     * @inheritdoc
+     * {@inheritdoc}
      */
     protected function prepareKeys($models)
     {
         if ($this->key !== null) {
-            $keys = [];
-            foreach ($models as $model) {
-                if (is_string($this->key)) {
-                    $keys[] = $model[$this->key];
-                } else {
-                    $keys[] = call_user_func($this->key, $model);
-                }
-            }
-
-            return $keys;
-        } else {
-            return array_keys($models);
+            return ArrayHelper::getColumn($models, $this->key, false);
         }
+
+        return array_keys($models);
     }
 
     /**
-     * @inheritdoc
+     * {@inheritdoc}
      */
     protected function prepareTotalCount()
     {
-        return count($this->allModels);
+        return is_array($this->allModels) ? count($this->allModels) : 0;
     }
 
     /**
-     * Sorts the data models according to the given sort definition
+     * Sorts the data models according to the given sort definition.
      * @param array $models the models to be sorted
      * @param Sort $sort the sort definition
      * @return array the sorted data models
@@ -136,7 +129,7 @@ class ArrayDataProvider extends BaseDataProvider
     {
         $orders = $sort->getOrders();
         if (!empty($orders)) {
-            ArrayHelper::multisort($models, array_keys($orders), array_values($orders));
+            ArrayHelper::multisort($models, array_keys($orders), array_values($orders), $sort->sortFlags);
         }
 
         return $models;

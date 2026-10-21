@@ -3,9 +3,9 @@
  *
  * This is the JavaScript widget used by the yii\grid\GridView widget.
  *
- * @link http://www.yiiframework.com/
+ * @link https://www.yiiframework.com/
  * @copyright Copyright (c) 2008 Yii Software LLC
- * @license http://www.yiiframework.com/license/
+ * @license https://www.yiiframework.com/license/
  * @author Qiang Xue <qiang.xue@gmail.com>
  * @since 2.0
  */
@@ -14,7 +14,7 @@
         if (methods[method]) {
             return methods[method].apply(this, Array.prototype.slice.call(arguments, 1));
         } else if (typeof method === 'object' || !method) {
-            return methods.init.apply(this, arguments);
+                return methods.init.apply(this, arguments);
         } else {
             $.error('Method ' + method + ' does not exist in jQuery.yiiGridView');
             return false;
@@ -23,7 +23,8 @@
 
     var defaults = {
         filterUrl: undefined,
-        filterSelector: undefined
+        filterSelector: undefined,
+        filterOnFocusOut: true
     };
 
     var gridData = {};
@@ -104,6 +105,9 @@
                             return;
                         }
                     }
+                    if (!settings.filterOnFocusOut && event.type !== 'keydown') {
+                        return false;
+                    }
 
                     methods.applyFilter.apply($e);
 
@@ -126,7 +130,7 @@
             var namesInFilter = Object.keys(data);
 
             $.each(yii.getQueryParams(settings.filterUrl), function (name, value) {
-                if (namesInFilter.indexOf(name) === -1 && namesInFilter.indexOf(name.replace(/\[\]$/, '')) === -1) {
+                if (namesInFilter.indexOf(name) === -1 && namesInFilter.indexOf(name.replace(/\[\d*\]$/, '')) === -1) {
                     if (!$.isArray(value)) {
                         value = [value];
                     }
@@ -184,16 +188,19 @@
             if (!options.multiple || !options.checkAll) {
                 return;
             }
-            var checkAll = "#" + id + " input[name='" + options.checkAll + "']";
-            var inputs = options['class'] ? "input." + options['class'] : "input[name='" + options.name + "']";
-            var inputsEnabled = "#" + id + " " + inputs + ":enabled";
-            initEventHandler($grid, 'checkAllRows', 'click.yiiGridView', checkAll, function () {
-                $grid.find(inputs + ":enabled").prop('checked', this.checked);
+            var checkAllInput = "input[name='" + options.checkAll + "']";
+            var inputs = (options['class'] ? "input." + options['class'] : "input[name='" + options.name + "']") + ":enabled";
+            initEventHandler($grid, 'checkAllRows', 'click.yiiGridView', "#" + id + " " + checkAllInput, function () {
+                $grid.find(inputs + (this.checked ? ":not(:checked)" : ":checked")).prop('checked', this.checked).change();
             });
-            initEventHandler($grid, 'checkRow', 'click.yiiGridView', inputsEnabled, function () {
+            var handler = function () {
                 var all = $grid.find(inputs).length == $grid.find(inputs + ":checked").length;
-                $grid.find("input[name='" + options.checkAll + "']").prop('checked', all);
-            });
+                $grid.find(checkAllInput + (all ? ":not(:checked)" : ":checked")).prop('checked', all).change();
+            };
+            initEventHandler($grid, 'checkRow', 'click.yiiGridView', "#" + id + " " + inputs, handler);
+            if ($grid.find(inputs).length) {
+                handler(); // Ensure "check all" checkbox is checked on page load if all data row checkboxes are initially checked.
+            }
         },
 
         getSelectedRows: function () {
@@ -205,6 +212,7 @@
                     keys.push($(this).parent().closest('tr').data('key'));
                 });
             }
+
             return keys;
         },
 
@@ -237,7 +245,8 @@
      * @param {string} selector jQuery selector
      * @param {function} callback The actual function to be executed with this event
      */
-    function initEventHandler($gridView, type, event, selector, callback) {
+    function initEventHandler($gridView, type, event, selector, callback)
+    {
         var id = $gridView.attr('id');
         var prevHandler = gridEventHandlers[id];
         if (prevHandler !== undefined && prevHandler[type] !== undefined) {

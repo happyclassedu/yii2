@@ -1,8 +1,9 @@
 <?php
+
 /**
- * @link http://www.yiiframework.com/
+ * @link https://www.yiiframework.com/
  * @copyright Copyright (c) 2008 Yii Software LLC
- * @license http://www.yiiframework.com/license/
+ * @license https://www.yiiframework.com/license/
  */
 
 namespace yii\console;
@@ -64,19 +65,20 @@ class Request extends \yii\base\Request
 
             if ($route === '--') {
                 $endOfOptionsFound = true;
-                $route = array_shift($rawParams);
+                $route = (string)array_shift($rawParams);
             }
         } else {
             $route = '';
         }
 
         $params = [];
+        $prevOption = null;
         foreach ($rawParams as $param) {
             if ($endOfOptionsFound) {
                 $params[] = $param;
             } elseif ($param === '--') {
                 $endOfOptionsFound = true;
-            } elseif (preg_match('/^--(\w+)(?:=(.*))?$/', $param, $matches)) {
+            } elseif (preg_match('/^--([\w-]+)(?:=(.*))?$/', $param, $matches)) {
                 $name = $matches[1];
                 if (is_numeric(substr($name, 0, 1))) {
                     throw new Exception('Parameter "' . $name . '" is not valid');
@@ -84,14 +86,19 @@ class Request extends \yii\base\Request
 
                 if ($name !== Application::OPTION_APPCONFIG) {
                     $params[$name] = isset($matches[2]) ? $matches[2] : true;
+                    $prevOption = &$params[$name];
                 }
-            } elseif (preg_match('/^-(\w+)(?:=(.*))?$/', $param, $matches)) {
+            } elseif (preg_match('/^-([\w-]+)(?:=(.*))?$/', $param, $matches)) {
                 $name = $matches[1];
                 if (is_numeric($name)) {
                     $params[] = $param;
                 } else {
                     $params['_aliases'][$name] = isset($matches[2]) ? $matches[2] : true;
+                    $prevOption = &$params['_aliases'][$name];
                 }
+            } elseif ($prevOption === true) {
+                // `--option value` syntax
+                $prevOption = $param;
             } else {
                 $params[] = $param;
             }

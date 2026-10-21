@@ -1,10 +1,17 @@
 <?php
 
+/**
+ * @link https://www.yiiframework.com/
+ * @copyright Copyright (c) 2008 Yii Software LLC
+ * @license https://www.yiiframework.com/license/
+ */
+
 namespace yiiunit\framework\web;
 
-use yii\web\UrlManager;
 use yii\web\GroupUrlRule;
 use yii\web\Request;
+use yii\web\UrlManager;
+use yii\web\UrlRule;
 use yiiunit\TestCase;
 
 /**
@@ -12,34 +19,35 @@ use yiiunit\TestCase;
  */
 class GroupUrlRuleTest extends TestCase
 {
-    protected function setUp()
+    protected function setUp(): void
     {
         parent::setUp();
         $this->mockApplication();
     }
 
-    public function testCreateUrl()
+    public function testCreateUrl(): void
     {
         $manager = new UrlManager(['cache' => null]);
         $suites = $this->getTestsForCreateUrl();
         foreach ($suites as $i => $suite) {
-            list ($name, $config, $tests) = $suite;
+            list($name, $config, $tests) = $suite;
             $rule = new GroupUrlRule($config);
             foreach ($tests as $j => $test) {
-                list ($route, $params, $expected) = $test;
+                list($route, $params, $expected, $status) = $test;
                 $url = $rule->createUrl($manager, $route, $params);
                 $this->assertEquals($expected, $url, "Test#$i-$j: $name");
+                $this->assertSame($status, $rule->getCreateUrlStatus(), "Test#$i-$j: $name");
             }
         }
     }
 
-    public function testParseRequest()
+    public function testParseRequest(): void
     {
         $manager = new UrlManager(['cache' => null]);
         $request = new Request(['hostInfo' => 'http://en.example.com']);
         $suites = $this->getTestsForParseRequest();
         foreach ($suites as $i => $suite) {
-            list ($name, $config, $tests) = $suite;
+            list($name, $config, $tests) = $suite;
             $rule = new GroupUrlRule($config);
             foreach ($tests as $j => $test) {
                 $request->pathInfo = $test[0];
@@ -55,6 +63,56 @@ class GroupUrlRuleTest extends TestCase
         }
     }
 
+    public function testParseVerb(): void
+    {
+        $config = [
+            'prefix' => 'admin',
+            'rules' => [
+                'login' => 'user/login'
+            ],
+        ];
+        $rules = new GroupUrlRule($config);
+        $this->assertInstanceOf(UrlRule::class, $rules->rules[0]);
+        $this->assertNull($rules->rules[0]->verb);
+
+        $config = [
+            'prefix' => 'admin',
+            'rules' => [
+                'login' => ['route' => 'user/login', 'pattern' => 'login', 'verb' => 'POST'],
+            ],
+        ];
+        $rules = new GroupUrlRule($config);
+        $this->assertInstanceOf(UrlRule::class, $rules->rules[0]);
+        $this->assertCount(1, $rules->rules[0]->verb);
+        $this->assertContains('POST', $rules->rules[0]->verb);
+        $this->assertEquals('admin/user/login', $rules->rules[0]->route);
+
+        $config = [
+            'prefix' => 'admin',
+            'rules' => [
+                'POST login' => 'user/login'
+            ],
+        ];
+        $rules = new GroupUrlRule($config);
+        $this->assertInstanceOf(UrlRule::class, $rules->rules[0]);
+        $this->assertCount(1, $rules->rules[0]->verb);
+        $this->assertContains('POST', $rules->rules[0]->verb);
+        $this->assertEquals('admin/user/login', $rules->rules[0]->route);
+
+        $config = [
+            'prefix' => 'admin',
+            'rules' => [
+                'POST,GET login' => 'user/login'
+            ],
+        ];
+        $rules = new GroupUrlRule($config);
+        $this->assertInstanceOf(UrlRule::class, $rules->rules[0]);
+        $this->assertCount(2, $rules->rules[0]->verb);
+        $this->assertContains('POST', $rules->rules[0]->verb);
+        $this->assertContains('GET', $rules->rules[0]->verb);
+        $this->assertEquals('admin/user/login', $rules->rules[0]->route);
+    }
+
     protected function getTestsForCreateUrl()
     {
         // structure of each test
@@ -64,6 +122,7 @@ class GroupUrlRuleTest extends TestCase
         //     route
         //     params
         //     expected output
+        //     expected getCreateUrlStatus() result
         return [
             [
                 'no prefix',
@@ -74,9 +133,9 @@ class GroupUrlRuleTest extends TestCase
                     ],
                 ],
                 [
-                    ['user/login', [], 'login'],
-                    ['user/logout', [], 'logout'],
-                    ['user/create', [], false],
+                    ['user/login', [], 'login', UrlRule::CREATE_STATUS_SUCCESS],
+                    ['user/logout', [], 'logout', UrlRule::CREATE_STATUS_SUCCESS],
+                    ['user/create', [], false, UrlRule::CREATE_STATUS_ROUTE_MISMATCH],
                 ],
             ],
             [
@@ -89,9 +148,9 @@ class GroupUrlRuleTest extends TestCase
                     ],
                 ],
                 [
-                    ['admin/user/login', [], 'admin/login'],
-                    ['admin/user/logout', [], 'admin/logout'],
-                    ['user/create', [], false],
+                    ['admin/user/login', [], 'admin/login', UrlRule::CREATE_STATUS_SUCCESS],
+                    ['admin/user/logout', [], 'admin/logout', UrlRule::CREATE_STATUS_SUCCESS],
+                    ['user/create', [], false, UrlRule::CREATE_STATUS_ROUTE_MISMATCH],
                 ],
             ],
             [
@@ -105,9 +164,9 @@ class GroupUrlRuleTest extends TestCase
                     ],
                 ],
                 [
-                    ['admin/user/login', [], '_/login'],
-                    ['admin/user/logout', [], '_/logout'],
-                    ['user/create', [], false],
+                    ['admin/user/login', [], '_/login', UrlRule::CREATE_STATUS_SUCCESS],
+                    ['admin/user/logout', [], '_/logout', UrlRule::CREATE_STATUS_SUCCESS],
+                    ['user/create', [], false, UrlRule::CREATE_STATUS_ROUTE_MISMATCH],
                 ],
             ],
             [
@@ -117,7 +176,7 @@ class GroupUrlRuleTest extends TestCase
                     'routePrefix' => 'admin',
                     'ruleConfig' => [
                         'suffix' => '.html',
-                        'class' => 'yii\\web\\UrlRule'
+                        'class' => 'yii\\web\\UrlRule',
                     ],
                     'rules' => [
                         'login' => 'user/login',
@@ -125,9 +184,38 @@ class GroupUrlRuleTest extends TestCase
                     ],
                 ],
                 [
-                    ['admin/user/login', [], '_/login.html'],
-                    ['admin/user/logout', [], '_/logout.html'],
-                    ['user/create', [], false],
+                    ['admin/user/login', [], '_/login.html', UrlRule::CREATE_STATUS_SUCCESS],
+                    ['admin/user/logout', [], '_/logout.html', UrlRule::CREATE_STATUS_SUCCESS],
+                    ['user/create', [], false, UrlRule::CREATE_STATUS_ROUTE_MISMATCH],
+                ],
+            ],
+            [
+                'createStatus for failed statuses',
+                [
+                    'prefix' => '_',
+                    'routePrefix' => 'admin',
+                    'ruleConfig' => [
+                        'suffix' => '.html',
+                        'class' => 'yii\web\UrlRule',
+                    ],
+                    'rules' => [
+                        'login' => 'user/login',
+                        [
+                            'pattern' => 'logout',
+                            'route' => 'user/logout',
+                            'mode' => UrlRule::PARSING_ONLY,
+                        ],
+                        [
+                            'pattern' => 'logout/<token:\w+>',
+                            'route' => 'user/logout',
+                        ],
+                    ],
+                ],
+                [
+                    [
+                        'admin/user/logout', [], false,
+                        UrlRule::CREATE_STATUS_PARSING_ONLY | UrlRule::CREATE_STATUS_ROUTE_MISMATCH | UrlRule::CREATE_STATUS_PARAMS_MISMATCH,
+                    ],
                 ],
             ],
         ];
@@ -146,6 +234,21 @@ class GroupUrlRuleTest extends TestCase
             [
                 'no prefix',
                 [
+                    'rules' => [
+                        'login' => 'user/login',
+                        'logout' => 'user/logout',
+                    ],
+                ],
+                [
+                    ['login', 'user/login'],
+                    ['logout', 'user/logout'],
+                    ['create', false],
+                ],
+            ],
+            [
+                'slash prefix',
+                [
+                    'prefix' => '/',
                     'rules' => [
                         'login' => 'user/login',
                         'logout' => 'user/logout',
@@ -197,7 +300,7 @@ class GroupUrlRuleTest extends TestCase
                     'routePrefix' => 'admin',
                     'ruleConfig' => [
                         'suffix' => '.html',
-                        'class' => 'yii\\web\\UrlRule'
+                        'class' => 'yii\\web\\UrlRule',
                     ],
                     'rules' => [
                         'login' => 'user/login',

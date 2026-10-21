@@ -1,9 +1,20 @@
 <?php
+
+/**
+ * @link https://www.yiiframework.com/
+ * @copyright Copyright (c) 2008 Yii Software LLC
+ * @license https://www.yiiframework.com/license/
+ */
+
+declare(strict_types=1);
+
 namespace yiiunit\framework\base;
 
 use yii\base\Behavior;
 use yii\base\Component;
 use yii\base\Event;
+use yii\base\InvalidConfigException;
+use yii\base\UnknownMethodException;
 use yiiunit\TestCase;
 
 function globalEventHandler($event)
@@ -23,24 +34,26 @@ function globalEventHandler2($event)
 class ComponentTest extends TestCase
 {
     /**
-     * @var NewComponent
+     * @var NewComponent|null
      */
     protected $component;
 
-    protected function setUp()
+    protected function setUp(): void
     {
         parent::setUp();
         $this->mockApplication();
         $this->component = new NewComponent();
     }
 
-    protected function tearDown()
+    protected function tearDown(): void
     {
         parent::tearDown();
         $this->component = null;
+        gc_enable();
+        gc_collect_cycles();
     }
 
-    public function testClone()
+    public function testClone(): void
     {
         $component = new NewComponent();
         $behavior = new NewBehavior();
@@ -48,14 +61,18 @@ class ComponentTest extends TestCase
         $this->assertSame($behavior, $component->getBehavior('a'));
         $component->on('test', 'fake');
         $this->assertTrue($component->hasEventHandlers('test'));
+        $component->on('*', 'fakeWildcard');
+        $this->assertTrue($component->hasEventHandlers('foo'));
 
         $clone = clone $component;
         $this->assertNotSame($component, $clone);
         $this->assertNull($clone->getBehavior('a'));
         $this->assertFalse($clone->hasEventHandlers('test'));
+        $this->assertFalse($clone->hasEventHandlers('foo'));
+        $this->assertFalse($clone->hasEventHandlers('*'));
     }
 
-    public function testHasProperty()
+    public function testHasProperty(): void
     {
         $this->assertTrue($this->component->hasProperty('Text'));
         $this->assertTrue($this->component->hasProperty('text'));
@@ -65,7 +82,7 @@ class ComponentTest extends TestCase
         $this->assertFalse($this->component->hasProperty('Content'));
     }
 
-    public function testCanGetProperty()
+    public function testCanGetProperty(): void
     {
         $this->assertTrue($this->component->canGetProperty('Text'));
         $this->assertTrue($this->component->canGetProperty('text'));
@@ -75,7 +92,7 @@ class ComponentTest extends TestCase
         $this->assertFalse($this->component->canGetProperty('Content'));
     }
 
-    public function testCanSetProperty()
+    public function testCanSetProperty(): void
     {
         $this->assertTrue($this->component->canSetProperty('Text'));
         $this->assertTrue($this->component->canSetProperty('text'));
@@ -93,68 +110,73 @@ class ComponentTest extends TestCase
         $this->component->detachBehavior('a');
     }
 
-    public function testGetProperty()
+    public function testGetProperty(): void
     {
-        $this->assertTrue('default' === $this->component->Text);
-        $this->setExpectedException('yii\base\UnknownPropertyException');
+        $this->assertSame('default', $this->component->Text);
+        $this->expectException('yii\base\UnknownPropertyException');
+        // @phpstan-ignore property.notFound (We intentionally access a non-existent property to test that an exception is thrown)
         $value2 = $this->component->Caption;
     }
 
-    public function testSetProperty()
+    public function testSetProperty(): void
     {
         $value = 'new value';
         $this->component->Text = $value;
         $this->assertEquals($value, $this->component->Text);
-        $this->setExpectedException('yii\base\UnknownPropertyException');
+        $this->expectException('yii\base\UnknownPropertyException');
+        // @phpstan-ignore property.notFound (We intentionally access a non-existent property to test that an exception is thrown)
         $this->component->NewMember = $value;
     }
 
-    public function testIsset()
+    public function testIsset(): void
     {
         $this->assertTrue(isset($this->component->Text));
-        $this->assertFalse(empty($this->component->Text));
+        $this->assertNotEmpty($this->component->Text);
 
         $this->component->Text = '';
         $this->assertTrue(isset($this->component->Text));
-        $this->assertTrue(empty($this->component->Text));
+        $this->assertEmpty($this->component->Text);
 
         $this->component->Text = null;
         $this->assertFalse(isset($this->component->Text));
-        $this->assertTrue(empty($this->component->Text));
+        $this->assertEmpty($this->component->Text);
 
         $this->assertFalse(isset($this->component->p2));
-        $this->component->attachBehavior('a', new NewBehavior());
-        $this->component->setP2('test');
-        $this->assertTrue(isset($this->component->p2));
+        $component = $this->component;
+        $component->attachBehavior('a', new NewBehavior());
+        $component->setP2('test');
+        $this->assertTrue(isset($component->p2));
     }
 
-    public function testCallUnknownMethod()
+    public function testCallUnknownMethod(): void
     {
-        $this->setExpectedException('yii\base\UnknownMethodException');
+        $this->expectException('yii\base\UnknownMethodException');
+        // @phpstan-ignore method.notFound (We intentionally call a non-existent method to test that an exception is thrown)
         $this->component->unknownMethod();
     }
 
-    public function testUnset()
+    public function testUnset(): void
     {
         unset($this->component->Text);
         $this->assertFalse(isset($this->component->Text));
-        $this->assertTrue(empty($this->component->Text));
+        $this->assertEmpty($this->component->Text);
 
-        $this->component->attachBehavior('a', new NewBehavior());
-        $this->component->setP2('test');
-        $this->assertEquals('test', $this->component->getP2());
+        $component = $this->component;
+        $component->attachBehavior('a', new NewBehavior());
+        $component->setP2('test');
+        $this->assertEquals('test', $component->getP2());
 
-        unset($this->component->p2);
-        $this->assertNull($this->component->getP2());
+        unset($component->p2);
+        $this->assertNull($component->getP2());
     }
 
-    public function testUnsetReadonly()
+    public function testUnsetReadonly(): void
     {
-        $this->setExpectedException('yii\base\InvalidCallException');
+        $this->expectException('yii\base\InvalidCallException');
         unset($this->component->object);
     }
 
-    public function testOn()
+    public function testOn(): void
     {
         $this->assertFalse($this->component->hasEventHandlers('click'));
         $this->component->on('click', 'foo');
@@ -162,11 +184,15 @@ class ComponentTest extends TestCase
 
         $this->assertFalse($this->component->hasEventHandlers('click2'));
         $p = 'on click2';
+        // @phpstan-ignore property.notFound (Since the property contains a space in its name, the error cannot be resolved using PHPDoc.)
         $this->component->$p = 'foo2';
         $this->assertTrue($this->component->hasEventHandlers('click2'));
     }
 
-    public function testOff()
+    /**
+     * @depends testOn
+     */
+    public function testOff(): void
     {
         $this->assertFalse($this->component->hasEventHandlers('click'));
         $this->component->on('click', 'foo');
@@ -184,7 +210,10 @@ class ComponentTest extends TestCase
         $this->assertFalse($this->component->hasEventHandlers('click2'));
     }
 
-    public function testTrigger()
+    /**
+     * @depends testOn
+     */
+    public function testTrigger(): void
     {
         $this->component->on('click', [$this->component, 'myEventHandler']);
         $this->assertFalse($this->component->eventHandled);
@@ -211,16 +240,85 @@ class ComponentTest extends TestCase
         $this->assertTrue($eventRaised);
     }
 
-    public function testHasEventHandlers()
+    /**
+     * @depends testOn
+     */
+    public function testOnWildcard(): void
     {
-        $this->assertFalse($this->component->hasEventHandlers('click'));
-        $this->component->on('click', 'foo');
-        $this->assertTrue($this->component->hasEventHandlers('click'));
+        $this->assertFalse($this->component->hasEventHandlers('group.click'));
+        $this->component->on('group.*', 'foo');
+        $this->assertTrue($this->component->hasEventHandlers('group.click'));
+        $this->assertFalse($this->component->hasEventHandlers('category.click'));
     }
 
-    public function testStopEvent()
+    /**
+     * @depends testOnWildcard
+     * @depends testOff
+     */
+    public function testOffWildcard(): void
     {
-        $component = new NewComponent;
+        $this->assertFalse($this->component->hasEventHandlers('group.click'));
+        $this->component->on('group.*', 'foo');
+        $this->assertTrue($this->component->hasEventHandlers('group.click'));
+        $this->component->off('*', 'foo');
+        $this->assertTrue($this->component->hasEventHandlers('group.click'));
+        $this->component->off('group.*', 'foo');
+        $this->assertFalse($this->component->hasEventHandlers('group.click'));
+
+        $this->component->on('category.*', 'foo');
+        $this->component->on('category.*', 'foo2');
+        $this->component->on('category.*', 'foo3');
+        $this->assertTrue($this->component->hasEventHandlers('category.click'));
+        $this->component->off('category.*', 'foo3');
+        $this->assertTrue($this->component->hasEventHandlers('category.click'));
+        $this->component->off('category.*');
+        $this->assertFalse($this->component->hasEventHandlers('category.click'));
+    }
+
+    /**
+     * @depends testTrigger
+     */
+    public function testTriggerWildcard(): void
+    {
+        $this->component->on('cli*', [$this->component, 'myEventHandler']);
+        $this->assertFalse($this->component->eventHandled);
+        $this->assertNull($this->component->event);
+        $this->component->raiseEvent();
+        $this->assertTrue($this->component->eventHandled);
+        $this->assertEquals('click', $this->component->event->name);
+        $this->assertEquals($this->component, $this->component->event->sender);
+        $this->assertFalse($this->component->event->handled);
+
+        $eventRaised = false;
+        $this->component->on('cli*', function ($event) use (&$eventRaised) {
+            $eventRaised = true;
+        });
+        $this->component->raiseEvent();
+        $this->assertTrue($eventRaised);
+
+        // raise event w/o parameters
+        $eventRaised = false;
+        $this->component->on('group.*', function ($event) use (&$eventRaised) {
+            $eventRaised = true;
+        });
+        $this->component->trigger('group.test');
+        $this->assertTrue($eventRaised);
+    }
+
+    public function testHasEventHandlers(): void
+    {
+        $this->assertFalse($this->component->hasEventHandlers('click'));
+
+        $this->component->on('click', 'foo');
+        $this->assertTrue($this->component->hasEventHandlers('click'));
+
+        $this->component->on('*', 'foo');
+        $this->assertTrue($this->component->hasEventHandlers('some'));
+    }
+
+    public function testStopEvent(): void
+    {
+        $component = new NewComponent();
         $component->on('click', 'yiiunit\framework\base\globalEventHandler2');
         $component->on('click', [$this->component, 'myEventHandler']);
         $component->raiseEvent();
@@ -228,14 +326,14 @@ class ComponentTest extends TestCase
         $this->assertFalse($this->component->eventHandled);
     }
 
-    public function testAttachBehavior()
+    public function testAttachBehavior(): void
     {
-        $component = new NewComponent;
+        $component = new NewComponent();
         $this->assertFalse($component->hasProperty('p'));
         $this->assertFalse($component->behaviorCalled);
         $this->assertNull($component->getBehavior('a'));
 
-        $behavior = new NewBehavior;
+        $behavior = new NewBehavior();
         $component->attachBehavior('a', $behavior);
         $this->assertSame($behavior, $component->getBehavior('a'));
         $this->assertTrue($component->hasProperty('p'));
@@ -244,25 +342,58 @@ class ComponentTest extends TestCase
 
         $this->assertSame($behavior, $component->detachBehavior('a'));
         $this->assertFalse($component->hasProperty('p'));
-        $this->setExpectedException('yii\base\UnknownMethodException');
-        $component->test();
+        try {
+            $component->test();
+            $this->fail('Expected exception ' . UnknownMethodException::class . " wasn't thrown");
+        } catch (UnknownMethodException $e) {
+            // Expected
+        }
 
-        $p = 'as b';
-        $component = new NewComponent;
-        $component->$p = ['class' => 'NewBehavior'];
-        $this->assertSame($behavior, $component->getBehavior('a'));
+        $component = new NewComponent();
+        // @phpstan-ignore property.notFound (Since the property contains a space in its name, the error cannot be resolved using PHPDoc.)
+        $component->{'as b'} = ['class' => NewBehavior::class];
+        $this->assertInstanceOf(NewBehavior::class, $component->getBehavior('b'));
         $this->assertTrue($component->hasProperty('p'));
         $component->test();
         $this->assertTrue($component->behaviorCalled);
+
+        // @phpstan-ignore property.notFound (Since the property contains a space in its name, the error cannot be resolved using PHPDoc.)
+        $component->{'as c'} = ['__class' => NewBehavior::class];
+        $this->assertNotNull($component->getBehavior('c'));
+
+        // @phpstan-ignore property.notFound (Since the property contains a space in its name, the error cannot be resolved using PHPDoc.)
+        $component->{'as d'} = [
+            '__class' => NewBehavior2::class,
+            'class' => NewBehavior::class,
+        ];
+        $this->assertInstanceOf(NewBehavior2::class, $component->getBehavior('d'));
+
+        // CVE-2024-4990
+        try {
+            // @phpstan-ignore property.notFound (Since the property contains a space in its name, the error cannot be resolved using PHPDoc.)
+            $component->{'as e'} = [
+                '__class' => 'NotExistsBehavior',
+                'class' => NewBehavior::class,
+            ];
+            $this->fail('Expected exception ' . InvalidConfigException::class . " wasn't thrown");
+        } catch (InvalidConfigException $e) {
+            $this->assertSame('Class is not of type yii\base\Behavior or its subclasses', $e->getMessage());
+        }
+
+        $component = new NewComponent();
+        $component->{'as f'} = function () {
+            return new NewBehavior();
+        };
+        $this->assertNotNull($component->getBehavior('f'));
     }
 
-    public function testAttachBehaviors()
+    public function testAttachBehaviors(): void
     {
-        $component = new NewComponent;
+        $component = new NewComponent();
         $this->assertNull($component->getBehavior('a'));
         $this->assertNull($component->getBehavior('b'));
 
-        $behavior = new NewBehavior;
+        $behavior = new NewBehavior();
 
         $component->attachBehaviors([
             'a' => $behavior,
@@ -272,10 +403,10 @@ class ComponentTest extends TestCase
         $this->assertSame(['a' => $behavior, 'b' => $behavior], $component->getBehaviors());
     }
 
-    public function testDetachBehavior()
+    public function testDetachBehavior(): void
     {
-        $component = new NewComponent;
-        $behavior = new NewBehavior;
+        $component = new NewComponent();
+        $behavior = new NewBehavior();
 
         $component->attachBehavior('a', $behavior);
         $this->assertSame($behavior, $component->getBehavior('a'));
@@ -288,10 +419,10 @@ class ComponentTest extends TestCase
         $this->assertNull($detachedBehavior);
     }
 
-    public function testDetachBehaviors()
+    public function testDetachBehaviors(): void
     {
-        $component = new NewComponent;
-        $behavior = new NewBehavior;
+        $component = new NewComponent();
+        $behavior = new NewBehavior();
 
         $component->attachBehavior('a', $behavior);
         $this->assertSame($behavior, $component->getBehavior('a'));
@@ -303,58 +434,170 @@ class ComponentTest extends TestCase
         $this->assertNull($component->getBehavior('b'));
     }
 
-    public function testSetReadOnlyProperty()
+    public function testSetReadOnlyProperty(): void
     {
-        $this->setExpectedException(
-            '\yii\base\InvalidCallException',
-            'Setting read-only property: yiiunit\framework\base\NewComponent::object'
-        );
+        $this->expectException('\yii\base\InvalidCallException');
+        $this->expectExceptionMessage('Setting read-only property: yiiunit\framework\base\NewComponent::object');
         $this->component->object = 'z';
     }
 
-    public function testSetPropertyOfBehavior()
+    public function testSetPropertyOfBehavior(): void
     {
         $this->assertNull($this->component->getBehavior('a'));
 
-        $behavior = new NewBehavior;
+        $behavior = new NewBehavior();
         $this->component->attachBehaviors([
             'a' => $behavior,
         ]);
         $this->component->p = 'Yii is cool.';
 
-        $this->assertSame('Yii is cool.', $this->component->getBehavior('a')->p);
+        /** @var NewBehavior $aBehavior */
+        $aBehavior = $this->component->getBehavior('a');
+        $this->assertSame('Yii is cool.', $aBehavior->p);
     }
 
-    public function testSettingBehaviorWithSetter()
+    public function testSettingBehaviorWithSetter(): void
     {
         $behaviorName = 'foo';
         $this->assertNull($this->component->getBehavior($behaviorName));
         $p = 'as ' . $behaviorName;
-        $this->component->$p = __NAMESPACE__ .  '\NewBehavior';
-        $this->assertSame(__NAMESPACE__ .  '\NewBehavior', get_class($this->component->getBehavior($behaviorName)));
+        // @phpstan-ignore property.notFound (Since the property contains a space in its name, the error cannot be resolved using PHPDoc.)
+        $this->component->$p = __NAMESPACE__ . '\NewBehavior';
+        $this->assertSame(__NAMESPACE__ . '\NewBehavior', get_class($this->component->getBehavior($behaviorName)));
     }
 
-    public function testWriteOnlyProperty()
+    public function testWriteOnlyProperty(): void
     {
-        $this->setExpectedException(
-            '\yii\base\InvalidCallException',
-            'Getting write-only property: yiiunit\framework\base\NewComponent::writeOnly'
-        );
+        $this->expectException('\yii\base\InvalidCallException');
+        $this->expectExceptionMessage('Getting write-only property: yiiunit\framework\base\NewComponent::writeOnly');
         $this->component->writeOnly;
     }
 
-    public function testSuccessfulMethodCheck()
+    public function testSuccessfulMethodCheck(): void
     {
         $this->assertTrue($this->component->hasMethod('hasProperty'));
     }
 
-    public function testTurningOffNonExistingBehavior()
+    public function testTurningOffNonExistingBehavior(): void
     {
         $this->assertFalse($this->component->hasEventHandlers('foo'));
         $this->assertFalse($this->component->off('foo'));
     }
+
+    public function testDetachNotAttachedHandler(): void
+    {
+        $obj = new NewComponent();
+
+        $obj->on('test', [$this, 'handler']);
+        $this->assertFalse($obj->off('test', [$this, 'handler2']), 'Trying to remove the handler that is not attached');
+        $this->assertTrue($obj->off('test', [$this, 'handler']), 'Trying to remove the attached handler');
+    }
+
+    /**
+     * @see https://github.com/yiisoft/yii2/issues/17223
+     */
+    public function testEventClosureDetachesItself(): void
+    {
+        $obj = require __DIR__ . '/stubs/AnonymousComponentClass.php';
+
+        $obj->trigger('barEventOnce');
+        $this->assertEquals(1, $obj->foo);
+        $obj->trigger('barEventOnce');
+        $this->assertEquals(1, $obj->foo);
+    }
+
+    public function testGetPropertyViaBehavior(): void
+    {
+        $this->component->attachBehavior('a', new NewBehavior());
+        $this->component->p = 'behavior value';
+        $this->assertSame('behavior value', $this->component->p);
+    }
+
+    public function testHasMethodViaBehavior(): void
+    {
+        $this->assertFalse($this->component->hasMethod('test'));
+        $this->component->attachBehavior('a', new NewBehavior());
+        $this->assertTrue($this->component->hasMethod('test'));
+    }
+
+    public function testHasMethodWithoutBehaviors(): void
+    {
+        $this->assertFalse($this->component->hasMethod('test', false));
+        $this->assertTrue($this->component->hasMethod('raiseEvent', false));
+    }
+
+    public function testOnPrependPlainHandler(): void
+    {
+        $order = [];
+        $this->component->on('click', function () use (&$order) {
+            $order[] = 'first';
+        });
+        $this->component->on('click', function () use (&$order) {
+            $order[] = 'prepended';
+        }, null, false);
+
+        $this->component->trigger('click');
+        $this->assertSame(['prepended', 'first'], $order);
+    }
+
+    public function testOnPrependWildcardHandler(): void
+    {
+        $order = [];
+        $this->component->on('click.*', function () use (&$order) {
+            $order[] = 'first';
+        });
+        $this->component->on('click.*', function () use (&$order) {
+            $order[] = 'prepended';
+        }, null, false);
+
+        $this->component->trigger('click.test');
+        $this->assertSame(['prepended', 'first'], $order);
+    }
+
+    public function testSetBehaviorInstanceViaProperty(): void
+    {
+        $component = new NewComponent();
+        $behavior = new NewBehavior();
+        $p = 'as myBehavior';
+        // @phpstan-ignore property.notFound (/ Since the property contains a space in its name, the error cannot be resolved using PHPDoc.)
+        $component->$p = $behavior;
+        $this->assertSame($behavior, $component->getBehavior('myBehavior'));
+    }
+
+    public function testBehaviorsDeclaredInMethod(): void
+    {
+        $component = new ComponentWithBehaviors();
+        $component->ensureBehaviors();
+        $behaviors = $component->getBehaviors();
+        $this->assertCount(2, $behaviors);
+        $this->assertInstanceOf(NewBehavior::class, $behaviors['named']);
+        $this->assertInstanceOf(NewBehavior2::class, $behaviors[0]);
+    }
+
+    public function testAttachBehaviorReplacesExisting(): void
+    {
+        $behavior1 = new NewBehavior();
+        $behavior2 = new NewBehavior();
+
+        $this->component->attachBehavior('a', $behavior1);
+        $this->assertSame($behavior1, $this->component->getBehavior('a'));
+
+        $this->component->attachBehavior('a', $behavior2);
+        $this->assertSame($behavior2, $this->component->getBehavior('a'));
+    }
 }
 
+/**
+ * @property mixed $Text
+ * @property mixed $text
+ * @property-read self $object
+ * @property-read callable $execute
+ * @property-read array<array-key, mixed> $items
+ * @property-write mixed $writeOnly
+ *
+ * @mixin NewBehavior
+ * We use `mixin` here to avoid PHPStan errors when testing `attachBehavior`.
+ */
 class NewComponent extends Component
 {
     private $_object = null;
@@ -367,7 +610,7 @@ class NewComponent extends Component
         return $this->_text;
     }
 
-    public function setText($value)
+    public function setText($value): void
     {
         $this->_text = $value;
     }
@@ -375,7 +618,7 @@ class NewComponent extends Component
     public function getObject()
     {
         if (!$this->_object) {
-            $this->_object = new self;
+            $this->_object = new self();
             $this->_object->_text = 'object text';
         }
 
@@ -398,22 +641,26 @@ class NewComponent extends Component
     public $event;
     public $behaviorCalled = false;
 
-    public function myEventHandler($event)
+    public function myEventHandler($event): void
     {
         $this->eventHandled = true;
         $this->event = $event;
     }
 
-    public function raiseEvent()
+    public function raiseEvent(): void
     {
-        $this->trigger('click', new Event);
+        $this->trigger('click', new Event());
     }
 
-    public function setWriteOnly()
+    public function setWriteOnly($value)
     {
     }
 }
 
+/**
+ * @extends Behavior<NewComponent>
+ * @property mixed $p2
+ */
 class NewBehavior extends Behavior
 {
     public $p;
@@ -424,7 +671,7 @@ class NewBehavior extends Behavior
         return $this->p2;
     }
 
-    public function setP2($value)
+    public function setP2($value): void
     {
         $this->p2 = $value;
     }
@@ -437,6 +684,10 @@ class NewBehavior extends Behavior
     }
 }
 
+class NewBehavior2 extends Behavior
+{
+}
+
 class NewComponent2 extends Component
 {
     public $a;
@@ -447,5 +698,16 @@ class NewComponent2 extends Component
     {
         $this->b = $b;
         $this->c = $c;
+    }
+}
+
+class ComponentWithBehaviors extends Component
+{
+    public function behaviors()
+    {
+        return [
+            'named' => NewBehavior::class,
+            NewBehavior2::class,
+        ];
     }
 }
